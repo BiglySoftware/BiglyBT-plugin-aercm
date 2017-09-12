@@ -1258,6 +1258,11 @@ RelatedContentUISWT
 						selected(
 							MenuItem menu, Object target ) 
 						{
+								// explicit selection of view - make sure it is enabled
+							
+							plugin.setRCMEnabled( true );
+							setUIEnabled( true );
+							
 							MultipleDocumentInterface mdi = UIFunctionsManager.getUIFunctions().getMDI();
 							mdi.showEntryByID(SIDEBAR_SECTION_RELATED_CONTENT);
 						}
