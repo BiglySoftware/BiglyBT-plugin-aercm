@@ -41,6 +41,8 @@ import com.biglybt.core.subs.*;
 import com.biglybt.core.tag.Tag;
 import com.biglybt.core.tag.TagType;
 import com.biglybt.core.util.*;
+import com.biglybt.core.util.DataSourceResolver.DataSourceImporter;
+import com.biglybt.core.util.DataSourceResolver.ExportedDataSource;
 import com.biglybt.pif.PluginConfig;
 import com.biglybt.pif.PluginConfigListener;
 import com.biglybt.pif.PluginInterface;
@@ -88,7 +90,7 @@ import com.biglybt.ui.swt.views.skin.sidebar.SideBarEntrySWT;
 
 public class 
 RelatedContentUISWT 
-	implements RelatedContentUI
+	implements RelatedContentUI, DataSourceImporter
 {		
 	public static final String SIDEBAR_SECTION_RELATED_CONTENT = "RelatedContent";
 		
@@ -164,6 +166,8 @@ RelatedContentUISWT
 		plugin_interface	= _plugin_interface;
 		swt_ui				= _ui;
 		plugin				= _plugin;
+		
+		DataSourceResolver.registerExporter( this );
 		
 		String path = "com/aelitis/plugins/rcmplugin/skins/";
 
@@ -1067,77 +1071,8 @@ RelatedContentUISWT
 					}
 				}
 				
-				mdiEntry.setDatasource(
-					new RelatedContentEnumerator()
-					{
-						private RelatedContentManagerListener base_listener;
-						
-						private RelatedContentEnumeratorListener current_listener;
-						
-						@Override
-						public void
-						enumerate(
-							RelatedContentEnumeratorListener	listener )
-						{
-							current_listener = listener;
-							
-							if ( base_listener == null ){
-																
-								base_listener = 
-									new RelatedContentManagerListener()
-									{
-										@Override
-										public void
-										contentFound(
-											RelatedContent[]	content )
-										{
-											if ( destroyed ){
-												
-													// use final ref here as manager will be nulled
-												
-												f_manager.removeListener( base_listener );
-												
-											}else{
-											
-												current_listener.contentFound( content );
-											}
-										}
-										
-										@Override
-										public void
-										contentChanged(
-											RelatedContent[]	content )
-										{
-										}
-										
-										@Override
-										public void
-										contentRemoved(
-											RelatedContent[] 	content ) 
-										{
-										}
-										
-										@Override
-										public void
-										contentChanged() 
-										{
-										}
-										
-										@Override
-										public void
-										contentReset()
-										{
-										}
-									};
-									
-									f_manager.addListener( base_listener );
-							}
-							
-							RelatedContent[] current_content = f_manager.getRelatedContent();
-							
-							listener.contentFound( current_content );
-						}
-					});
+				mdiEntry.setDatasource( new GeneralItem());
+
 
 				return mdiEntry;
 			}
@@ -2454,6 +2389,85 @@ RelatedContentUISWT
 		x.setVisible( true );
 	}
 	
+	private class
+	GeneralItem
+		implements RelatedContentEnumerator, DataSourceResolver.ExportableDataSource
+	{
+		private RelatedContentManagerListener base_listener;
+		
+		private RelatedContentEnumeratorListener current_listener;
+		
+		@Override
+		public void
+		enumerate(
+			RelatedContentEnumeratorListener	listener )
+		{
+			current_listener = listener;
+			
+			if ( base_listener == null ){
+												
+				base_listener = 
+					new RelatedContentManagerListener()
+					{
+						@Override
+						public void
+						contentFound(
+							RelatedContent[]	content )
+						{
+							if ( destroyed ){
+								
+									// use final ref here as manager will be nulled
+								
+								manager.removeListener( base_listener );
+								
+							}else{
+							
+								current_listener.contentFound( content );
+							}
+						}
+						
+						@Override
+						public void
+						contentChanged(
+							RelatedContent[]	content )
+						{
+						}
+						
+						@Override
+						public void
+						contentRemoved(
+							RelatedContent[] 	content ) 
+						{
+						}
+						
+						@Override
+						public void
+						contentChanged() 
+						{
+						}
+						
+						@Override
+						public void
+						contentReset()
+						{
+						}
+					};
+					
+					manager.addListener( base_listener );
+			}
+			
+			RelatedContent[] current_content = manager.getRelatedContent();
+			
+			listener.contentFound( current_content );
+		}
+		
+		public ExportedDataSource
+		exportDataSource()
+		{
+			return( null );
+		}
+	}
+	
 	public interface
 	RCMItem
 		extends RelatedContentEnumerator, MdiCloseListener
@@ -2493,9 +2507,52 @@ RelatedContentUISWT
 		isDestroyed();
 	}
 	
+	public Object
+	importDataSource(
+		Map<String,Object>		map )
+	{
+		long type = (Long)map.get( "type" );
+		
+		byte[]	hash = Base32.decode((String)map.get( "hash" ));
+		
+		if ( type == 0 ){
+			
+			String[] networks = map.containsKey( "networks")?((List<String>)map.get( "networks" )).toArray( new String[0] ):null;
+			
+			if ( networks != null ){
+				
+				for ( int i=0;i<networks.length;i++) {
+					
+					networks[i] = AENetworkClassifier.internalise( networks[i] );
+				}
+			}
+			
+			String[] expressions =  map.containsKey( "expressions")?((List<String>)map.get( "expressions" )).toArray( new String[0] ):null;
+			
+			RCMItemContent result =  new RCMItemContent(hash, networks, expressions );
+			
+			result.search();
+		
+			return( result );
+			
+		}else if ( type == 1 ) {
+			
+			
+			RCMItemSubscriptions result =  new RCMItemSubscriptions( hash );
+			
+			result.search();
+		
+			return( result );
+			
+		}else {
+			
+			return( null );
+		}
+	}
+	
 	public static class
 	RCMItemContent
-		implements RCMItem
+		implements RCMItem, DataSourceResolver.ExportableDataSource
 	{	
 		private byte[]				hash;
 		private long				file_size;
@@ -2601,6 +2658,42 @@ RelatedContentUISWT
 		getNetworks()
 		{
 			return( networks );
+		}
+		
+		public ExportedDataSource
+		exportDataSource()
+		{
+			return(
+				new ExportedDataSource()
+				{
+					public Class<? extends DataSourceImporter>
+					getExporter()
+					{
+						return( RelatedContentUISWT.class );
+					}
+					
+					public Map<String,Object>
+					getExport()
+					{
+						Map<String,Object> map = new HashMap<>();
+						
+						map.put( "type", 0L );
+						
+						map.put( "hash", Base32.encode( hash ));
+						
+						if ( networks != null ) {
+						
+							map.put( "networks", Arrays.asList( networks ));
+						}
+						
+						if ( expressions != null ) {
+							
+							map.put( "expressions", Arrays.asList( expressions ));
+						}
+						
+						return( map );
+					}
+				});
 		}
 		
 		@Override
@@ -3358,7 +3451,7 @@ RelatedContentUISWT
 	
 	public class
 	RCMItemSubscriptions
-		implements RCMItem
+		implements RCMItem, DataSourceResolver.ExportableDataSource
 	{	
 		private byte[]				hash;
 		
@@ -3374,14 +3467,40 @@ RelatedContentUISWT
 		private int	num_unread;
 		
 		private CopyOnWriteList<RelatedContentEnumeratorListener>	listeners = new CopyOnWriteList<RelatedContentEnumeratorListener>();
-		
-		private boolean	lookup_complete;
+			
+		private boolean lookup_complete;
 		
 		protected
 		RCMItemSubscriptions(
 			byte[]		_hash )
 		{
 			hash		= _hash;
+		}
+		
+		public ExportedDataSource
+		exportDataSource()
+		{
+			return(
+				new ExportedDataSource()
+				{
+					public Class<? extends DataSourceImporter>
+					getExporter()
+					{
+						return( RelatedContentUISWT.class );
+					}
+					
+					public Map<String,Object>
+					getExport()
+					{
+						Map<String,Object> map = new HashMap<>();
+						
+						map.put( "type", 1L );
+						
+						map.put( "hash", Base32.encode( hash ));
+						
+						return( map );
+					}
+				});
 		}
 		
 		@Override
@@ -3606,7 +3725,10 @@ RelatedContentUISWT
 									return;
 								}
 								
-								view.setNumUnread( f_num );
+								if ( view != null ){
+								
+									view.setNumUnread( f_num );
+								}
 							}
 						});
 				}
