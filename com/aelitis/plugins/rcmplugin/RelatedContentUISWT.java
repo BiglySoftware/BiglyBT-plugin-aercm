@@ -71,6 +71,7 @@ import com.biglybt.ui.UIFunctions;
 import com.biglybt.ui.UIFunctionsManager;
 import com.biglybt.ui.UserPrompterResultListener;
 import com.biglybt.ui.common.viewtitleinfo.ViewTitleInfo;
+import com.biglybt.ui.common.viewtitleinfo.ViewTitleInfo2;
 import com.biglybt.ui.common.viewtitleinfo.ViewTitleInfoManager;
 import com.biglybt.ui.mdi.*;
 import com.biglybt.ui.swt.SimpleTextEntryWindow;
@@ -1162,6 +1163,8 @@ RelatedContentUISWT
 						last_unread = unread;
 					}
 					
+					main_view_info.unreadChanged();
+					
 					ViewTitleInfoManager.refreshTitleInfo( main_view_info );
 				}
 			};
@@ -2168,8 +2171,10 @@ RelatedContentUISWT
 	
 	protected class
 	MainViewInfo
-		implements 	ViewTitleInfo
+		implements 	ViewTitleInfo2
 	{
+		private MdiEntry		mdi_entry;
+
 		protected
 		MainViewInfo()
 		{
@@ -2205,15 +2210,34 @@ RelatedContentUISWT
 		{
 			return( MessageText.getString("rcm.view.title"));
 		}
+		
+		protected void
+		unreadChanged()
+		{
+			if ( mdi_entry != null ){
+				
+				mdi_entry.redraw();
+			}
+		}
+		
+		@Override
+		public void titleInfoLinked(
+			MultipleDocumentInterface 	mdi, 
+			MdiEntry 					me )
+		{
+			mdi_entry	= me;
+		}
 	}
 	
 	protected class
 	RCMView
-		implements 	ViewTitleInfo
+		implements 	ViewTitleInfo2
 	{
 		private String			name;
 		
 		private int				num_unread;
+		
+		private MdiEntry		mdi_entry;
 		
 		protected
 		RCMView(
@@ -2238,9 +2262,6 @@ RelatedContentUISWT
 				
 					return( String.valueOf( num_unread ));
 				}
-				
-			}else if ( propertyID == TITLE_INDICATOR_COLOR ){
-	
 			}
 			
 			return null;
@@ -2267,7 +2288,20 @@ RelatedContentUISWT
 		{
 			num_unread = n;
 						
+			if ( mdi_entry != null ){
+				
+				mdi_entry.redraw();
+			}
+			
 			ViewTitleInfoManager.refreshTitleInfo( this );
+		}
+		
+		@Override
+		public void titleInfoLinked(
+			MultipleDocumentInterface 	mdi, 
+			MdiEntry 					me )
+		{
+			mdi_entry	= me;
 		}
 	}
 		
