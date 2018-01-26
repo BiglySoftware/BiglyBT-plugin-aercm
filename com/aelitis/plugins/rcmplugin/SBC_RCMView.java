@@ -570,7 +570,15 @@ SBC_RCMView
 						}
 					});
 
-		
+		tableManager.registerColumn(
+				RelatedContent.class, 
+				ColumnRC_FirstSeen.COLUMN_ID,
+					new TableColumnCreationListener() {
+						@Override
+						public void tableColumnCreated(TableColumn column) {
+							new ColumnRC_FirstSeen(column);
+						}
+					});
 		
 		tableManager.registerColumn(
 				RelatedContent.class, 

@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.biglybt.core.util.AENetworkClassifier;
+import com.biglybt.core.util.SystemTime;
 import com.biglybt.pif.download.Download;
 import com.biglybt.pif.utils.search.SearchResult;
 
@@ -38,6 +39,8 @@ public class
 SearchRelatedContent
 	extends RelatedContent
 {
+	private final int first_seen = (int)(SystemTime.getCurrentTime()/1000);
+
 	private int		rank;
 	private boolean	unread	= true;
 	
@@ -160,6 +163,13 @@ SearchRelatedContent
 	getLastSeenSecs() 
 	{
 		return 0;
+	}
+	
+	@Override
+	public int
+	getFirstSeenSecs() 
+	{
+		return first_seen;
 	}
 	
 	@Override

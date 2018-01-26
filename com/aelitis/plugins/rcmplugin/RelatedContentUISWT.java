@@ -3870,6 +3870,8 @@ RelatedContentUISWT
 	SubsRelatedContent
 		extends RelatedContent
 	{
+		private final int first_seen = (int)(SystemTime.getCurrentTime()/1000);
+		
 		private Subscription	subscription;
 		
 		private int rank;
@@ -3952,6 +3954,13 @@ RelatedContentUISWT
 		getLastSeenSecs() 
 		{
 			return 0;
+		}
+		
+		@Override
+		public int
+		getFirstSeenSecs() 
+		{
+			return first_seen;
 		}
 		
 		@Override
