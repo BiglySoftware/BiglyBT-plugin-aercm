@@ -890,6 +890,9 @@ SBC_RCMView
 						sc.setDownloadInfo(new DownloadUrlInfo(	RCMPlugin.getMagnetURI( rc )));
 						
 						valid.add(sc);
+					}else{
+						
+						valid.add( new SelectedContent());
 					}
 				}
 				
@@ -1178,12 +1181,29 @@ SBC_RCMView
 				focusRow = tv_related_content.getRow(i - 1);
 			}
 		}
-		manager.delete(related_content);
+		
+		List<RelatedContent> real_rc = new ArrayList<>();
+		
+		for ( RelatedContent rc: related_content ){
+		
+			if ( rc instanceof RelatedContentUISWT.SubsRelatedContent ){
+				
+				tv_related_content.removeDataSource( rc );
+				
+			}else{
+				
+				real_rc.add( rc );
+			}
+		}
+		
+		if ( real_rc.size() > 0 ){
+			manager.delete(real_rc.toArray( new RelatedContent[ real_rc.size()]));
+		}
 		
 		if (focusRow != null) {
-  		tv_related_content.setSelectedRows(new TableRowCore[] {
-  			focusRow
-  		});
+	  		tv_related_content.setSelectedRows(new TableRowCore[] {
+	  			focusRow
+	  		});
 		}
 	};
 
