@@ -23,11 +23,15 @@
 
 package com.aelitis.plugins.rcmplugin;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.*;
 
 import com.biglybt.core.config.COConfigurationManager;
 import com.biglybt.core.config.ParameterListener;
 import com.biglybt.core.util.*;
+import com.biglybt.core.util.protocol.azplug.AZPluginConnection;
+import com.biglybt.core.vuzefile.VuzeFileHandler;
 import com.biglybt.pif.PluginConfig;
 import com.biglybt.pif.PluginException;
 import com.biglybt.pif.PluginInterface;
@@ -41,7 +45,10 @@ import com.biglybt.pif.utils.Utilities;
 import com.biglybt.pif.utils.search.*;
 
 import com.biglybt.core.content.*;
+import com.biglybt.core.internat.MessageText;
 import com.biglybt.ui.UserPrompterResultListener;
+
+import sun.net.util.URLUtil;
 
 
 public class 
@@ -769,6 +776,69 @@ RCMPlugin
 			current_ui.setUIEnabled( true );
 			
 			current_ui.addSearch( hash, networks, name );
+		}
+	}
+	
+	public InputStream
+	handleURLProtocol(
+		AZPluginConnection			connection,
+		String						arg_str )
+
+		throws IPCException
+	{
+		try{
+			String [] bits = arg_str.split( "&" );
+			
+			long			size 	= -1;
+			byte[]			hash 	= null;
+			List<String>	nets 	= new ArrayList<>();
+			List<String>	exprs 	= new ArrayList<>();
+			
+			for ( String bit: bits ){
+				
+				String[] temp = bit.split( "=" );
+				
+				String lhs = temp[0];
+				String rhs = UrlUtils.decode( temp[1] );
+				
+				if ( lhs.equals( "net" )){
+					nets.add( AENetworkClassifier.internalise( rhs ));
+				}else if ( lhs.equals( "expr" )){
+					exprs.add( rhs );
+				}else if ( lhs.equals( "size" )){
+					size = Long.parseLong( rhs );
+				}else if ( lhs.equals( "hash" )){
+					hash = Base32.decode( rhs );
+				}
+			}
+			
+			if ( nets.isEmpty()){
+				
+				nets.add( AENetworkClassifier.AT_PUBLIC );
+			}
+			
+			String[] networks = nets.toArray( new String[ nets.size() ]);
+			
+			if ( hash != null ){
+				
+				lookupByHash( hash, networks, MessageText.getString( "RCM.column.rc_hash" ) + ": " + ByteFormatter.encodeString( hash ));
+				
+			}else if ( size != -1 ){
+				
+				lookupBySize(	size, networks );
+				
+			}else if ( !exprs.isEmpty()){
+				
+					// meh, just pick first atm 
+				
+				lookupByExpression( exprs.get(0), networks );
+			}
+			
+			return( new ByteArrayInputStream( VuzeFileHandler.getSingleton().create().exportToBytes() ));
+			
+		}catch( Throwable e ){
+
+			throw( new IPCException( e ));
 		}
 	}
 	

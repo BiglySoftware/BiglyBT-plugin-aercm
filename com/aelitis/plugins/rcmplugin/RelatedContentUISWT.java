@@ -76,6 +76,7 @@ import com.biglybt.ui.common.viewtitleinfo.ViewTitleInfoManager;
 import com.biglybt.ui.mdi.*;
 import com.biglybt.ui.swt.SimpleTextEntryWindow;
 import com.biglybt.ui.swt.Utils;
+import com.biglybt.ui.swt.mainwindow.ClipboardCopy;
 import com.biglybt.ui.swt.pif.*;
 import com.biglybt.ui.swt.shells.CoreWaiterSWT;
 import com.biglybt.ui.swt.shells.CoreWaiterSWT.TriggerInThread;
@@ -1580,7 +1581,7 @@ RelatedContentUISWT
 			
 			if (  existing_si == null ){
 	
-				final RCMItem new_si = new RCMItemContent( hash, networks );
+				final RCMItemContent new_si = new RCMItemContent( hash, networks );
 				
 				rcm_item_map.put( hash, new_si );
 				
@@ -1634,7 +1635,30 @@ RelatedContentUISWT
 								
 								MenuManager menu_manager = ui_manager.getMenuManager();
 
-								MenuItem menu_item = menu_manager.addMenuItem( "sidebar." + key, "rcm.menu.searchmore" );
+								// copy URI
+								
+								MenuItem menu_item = menu_manager.addMenuItem( "sidebar." + key, "label.copy.uri.to.clip" );
+								menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+								menu_item.addListener(
+									new MenuItemListener() 
+									{
+										@Override
+										public void
+										selected(
+											MenuItem			menu,
+											Object 				target )
+										{
+											try{
+												ClipboardCopy.copyToClipBoard( new_si.getURI());
+
+											}catch( Throwable e ){
+
+												Debug.out( e );
+											}
+										}
+									});
+								
+								menu_item = menu_manager.addMenuItem( "sidebar." + key, "rcm.menu.searchmore" );
 								menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
 								menu_item.addListener(
 									new MenuItemListener() 
@@ -1700,7 +1724,7 @@ RelatedContentUISWT
 				
 				if (  existing_si == null ){
 		
-					final RCMItem new_si = new RCMItemContent( dummy_hash, networks, file_size );
+					final RCMItemContent new_si = new RCMItemContent( dummy_hash, networks, file_size );
 					
 					rcm_item_map.put( dummy_hash, new_si );
 					
@@ -1782,7 +1806,30 @@ RelatedContentUISWT
 									
 									MenuManager menu_manager = ui_manager.getMenuManager();
 
-									MenuItem menu_item = menu_manager.addMenuItem( "sidebar." + key, "rcm.menu.searchmore" );
+										// copy URI
+									
+									MenuItem menu_item = menu_manager.addMenuItem( "sidebar." + key, "label.copy.uri.to.clip" );
+									menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+									menu_item.addListener(
+										new MenuItemListener() 
+										{
+											@Override
+											public void
+											selected(
+												MenuItem			menu,
+												Object 				target )
+											{
+												try{
+													ClipboardCopy.copyToClipBoard( new_si.getURI());
+
+												}catch( Throwable e ){
+
+													Debug.out( e );
+												}
+											}
+										});
+									
+									menu_item = menu_manager.addMenuItem( "sidebar." + key, "rcm.menu.searchmore" );
 									menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
 									menu_item.addListener(
 										new MenuItemListener() 
@@ -2087,6 +2134,29 @@ RelatedContentUISWT
 										
 										needs_sep = false;
 									}
+									
+										// copy URI
+									
+									menu_item = menu_manager.addMenuItem( "sidebar." + key, "label.copy.uri.to.clip" );
+									menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+									menu_item.addListener(
+										new MenuItemListener() 
+										{
+											@Override
+											public void
+											selected(
+												MenuItem			menu,
+												Object 				target )
+											{
+												try{
+													ClipboardCopy.copyToClipBoard( new_si.getURI());
+
+												}catch( Throwable e ){
+
+													Debug.out( e );
+												}
+											}
+										});
 									
 										// rename
 									
@@ -2728,6 +2798,40 @@ RelatedContentUISWT
 						return( map );
 					}
 				});
+		}
+		
+		public String
+		getURI()
+		{
+			String uri = "azplug:?id=aercm&arg=";
+			
+			String arg = "";
+			
+			for ( String net: networks ){
+				
+				arg += (arg.isEmpty()?"":"&") + "net=" + net;
+			}
+			
+			if ( expressions != null ){
+				
+				for ( String expr: expressions ){
+					
+					arg += (arg.isEmpty()?"":"&") + "expr=" + UrlUtils.encode( expr );
+				}
+				
+				
+			}else if ( file_size > 0 ){
+				
+				arg += (arg.isEmpty()?"":"&") + "size=" + file_size;
+				
+			}else{
+				
+				arg += (arg.isEmpty()?"":"&") + "hash=" + Base32.encode( hash );
+			}
+			
+			uri += UrlUtils.encode( arg );
+			
+			return( uri );
 		}
 		
 		@Override
