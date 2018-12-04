@@ -48,8 +48,6 @@ import com.biglybt.core.content.*;
 import com.biglybt.core.internat.MessageText;
 import com.biglybt.ui.UserPrompterResultListener;
 
-import sun.net.util.URLUtil;
-
 
 public class 
 RCMPlugin 
@@ -65,6 +63,8 @@ RCMPlugin
 
 	public static final String POPULARITY_SEARCH_EXPR	= "(.)";
 
+	private static final boolean	SEARCH_ENABLE_DEFAULT	= true;
+	
 	static{
 		COConfigurationManager.setParameter( "rcm.persist", true );
 		
@@ -306,7 +306,7 @@ RCMPlugin
 	protected boolean
 	isSearchEnabled()
 	{
-		return( plugin_interface.getPluginconfig().getPluginBooleanParameter( "rcm.search.enable", false ));
+		return( plugin_interface.getPluginconfig().getPluginBooleanParameter( "rcm.search.enable", SEARCH_ENABLE_DEFAULT ));
 	}
 
 
@@ -318,7 +318,7 @@ RCMPlugin
 	}
 
 	protected int
-	getMinuumSearchRank()
+	getMinimumSearchRank()
 	{
 		return( plugin_interface.getPluginconfig().getPluginIntParameter( "rcm.search.min_rank", MIN_SEARCH_RANK_DEFAULT ));
 	}
@@ -338,7 +338,7 @@ RCMPlugin
 	protected void
 	hookSearch()
 	{		
-		boolean enable = isRCMEnabled() && isSearchEnabled() && hasFTUXBeenShown();
+		boolean enable = isRCMEnabled() && isSearchEnabled() && ( SEARCH_ENABLE_DEFAULT || hasFTUXBeenShown());
 		
 		try{
 				
@@ -416,6 +416,11 @@ RCMPlugin
 	
 	public boolean isAllSources() {
 		return source_map_wildcard;
+	}
+	
+	public boolean showHitCounts()
+	{
+		return( source_map_wildcard || !hasFTUXBeenShown());
 	}
 	
 	public boolean
@@ -616,6 +621,53 @@ RCMPlugin
 		}
 	}
 	
+	protected void
+	searchReceived(
+		Map<String,Object>	search_parameters )
+	{
+		if ( !hasFTUXBeenShown()){
+			
+				// before showing FTUX we show potential search results in the sidebar so that users
+				// know they exist. Once FTUX has been shown the user has decided what they want to
+				// see so this is no longer needed
+			
+			String[]	networks = (String[])search_parameters.get( SearchProvider.SP_NETWORKS );
+	
+			String	target_net = AENetworkClassifier.AT_PUBLIC;
+	
+			if ( networks != null ){
+	
+				for ( String net: networks ){
+	
+					if ( net == AENetworkClassifier.AT_PUBLIC ){
+	
+						target_net = AENetworkClassifier.AT_PUBLIC;
+	
+						break;
+	
+					}else if ( net == AENetworkClassifier.AT_I2P ){
+	
+						target_net = AENetworkClassifier.AT_I2P;
+					}
+				}
+			}
+			
+			final String	term = (String)search_parameters.get( SearchProvider.SP_SEARCH_TERM );
+	
+			Map<String,Object> options = new HashMap<>();
+			
+			options.put( "No Focus", true );
+			
+			try{
+				lookupByExpression( term, new String[]{ target_net }, options );
+				
+			}catch( Throwable e ){
+				
+			}
+			
+		}
+	}
+	
 	public void
 	lookupByExpression(
 		String expression )
@@ -649,7 +701,11 @@ RCMPlugin
 			
 			throw( new IPCException( "UI not bound" ));
 		}
-				
+			
+		Boolean	_no_focus = (Boolean)options.get( "No Focus" );
+		
+		boolean no_focus = _no_focus != null && _no_focus;
+		
 		final Runnable do_it = 
 			new Runnable()
 			{
@@ -697,29 +753,36 @@ RCMPlugin
 								
 								current_ui.setUIEnabled( true );
 							
-								current_ui.addSearch( expression, networks );
+								current_ui.addSearch( expression, networks, no_focus );
 							}
 						}
 					}
 				}
 			};
-				
-		if ( !hasFTUXBeenShown() || !isRCMEnabled()){
 			
-			current_ui.showFTUX(
-				new UserPrompterResultListener()
-				{
-					@Override
-					public void
-					prompterClosed(
-						int result) 
-					{									
-						do_it.run();
-					}
-				});
-		}else{
+		if ( no_focus ){
 			
 			do_it.run();
+			
+		}else{
+			
+			if ( !hasFTUXBeenShown() || !isRCMEnabled()){
+				
+				current_ui.showFTUX(
+					new UserPrompterResultListener()
+					{
+						@Override
+						public void
+						prompterClosed(
+							int result) 
+						{									
+							do_it.run();
+						}
+					});
+			}else{
+				
+				do_it.run();
+			}
 		}
 	}
 	

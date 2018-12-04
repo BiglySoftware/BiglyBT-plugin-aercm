@@ -70,7 +70,6 @@ import com.biglybt.pifimpl.local.PluginCoreUtils;
 import com.biglybt.ui.UIFunctions;
 import com.biglybt.ui.UIFunctionsManager;
 import com.biglybt.ui.UserPrompterResultListener;
-import com.biglybt.ui.common.viewtitleinfo.ViewTitleInfo;
 import com.biglybt.ui.common.viewtitleinfo.ViewTitleInfo2;
 import com.biglybt.ui.common.viewtitleinfo.ViewTitleInfoManager;
 import com.biglybt.ui.mdi.*;
@@ -815,7 +814,7 @@ RelatedContentUISWT
 				String[] networks = AENetworkClassifier.getDefaultNetworks();
 
 				for (Tag tag : tags) {
-					addSearch("tag:" + tag.getTagName(true), networks);
+					addSearch("tag:" + tag.getTagName(true), networks, false);
 				}
 			}
 		});
@@ -1447,7 +1446,7 @@ RelatedContentUISWT
 											}
 										}
 																						
-										addSearch( value, networks );
+										addSearch( value, networks, false );
 									}
 								}
 							}); 	
@@ -1464,7 +1463,7 @@ RelatedContentUISWT
 						selected(
 							MenuItem menu, Object target ) 
 						{
-							addSearch( RCMPlugin.POPULARITY_SEARCH_EXPR, new String[]{ AENetworkClassifier.AT_PUBLIC });
+							addSearch( RCMPlugin.POPULARITY_SEARCH_EXPR, new String[]{ AENetworkClassifier.AT_PUBLIC }, false );
 						}
 					});
 			
@@ -1884,7 +1883,8 @@ RelatedContentUISWT
 	public void
 	addSearch(
 		final String 		expression,
-		final String[]		networks )
+		final String[]		networks,
+		boolean				no_focus )
 	{
 		last_search_expr	= expression;
 		
@@ -1979,7 +1979,7 @@ RelatedContentUISWT
 												MenuItem			menu,
 												Object 				target )
 											{
-												addSearch( expression, networks );
+												addSearch( expression, networks, false );
 											}
 										});
 											
@@ -2202,8 +2202,14 @@ RelatedContentUISWT
 										});
 									
 										
-
-									new_si.activate();
+									if ( no_focus ){
+									
+										new_si.setExpanded( true );
+										
+									}else{
+										
+										new_si.activate();
+									}
 								}
 							}
 						});
@@ -2228,7 +2234,14 @@ RelatedContentUISWT
 										ViewTitleInfoManager.refreshTitleInfo( mainEntry.getViewTitleInfo());
 									}
 									
-									existing_si.activate();
+									if ( no_focus ){
+									
+										existing_si.setExpanded( true );
+										
+									}else{
+										
+										existing_si.activate();
+									}
 								}
 							});
 				}
@@ -2326,7 +2339,7 @@ RelatedContentUISWT
 				
 				return( getTitle());
 				
-			}else if ( propertyID == TITLE_INDICATOR_TEXT && plugin.isAllSources() ){
+			}else if ( propertyID == TITLE_INDICATOR_TEXT && plugin.showHitCounts()){
 				
 				if ( num_unread > 0 ){
 				
@@ -2603,6 +2616,10 @@ RelatedContentUISWT
 		
 		public void
 		activate();
+		
+		public void
+		setExpanded(
+			boolean	b );
 		
 		public void
 		search();
@@ -3431,6 +3448,23 @@ RelatedContentUISWT
 				mdi.showEntryByID(sb_entry.getId());
 			}
 		}
+		
+		public void
+		setExpanded(
+			boolean	b )
+		{
+			MultipleDocumentInterface mdi = UIFunctionsManager.getUIFunctions().getMDI();
+
+			if ( mdi != null && sb_entry != null ){
+				
+				MdiEntry parent = mdi.getEntry( sb_entry.getParentID());
+				
+				if ( parent != null ){
+				
+					parent.setExpanded( b );
+				}
+			}
+		}
 	}
 	
 	public static class
@@ -3966,6 +4000,24 @@ RelatedContentUISWT
 			if ( mdi != null && sb_entry != null ){
 				
 				mdi.showEntryByID(sb_entry.getId());
+			}
+		}
+		
+		@Override
+		public void
+		setExpanded(
+			boolean	b )
+		{
+			MultipleDocumentInterface mdi = UIFunctionsManager.getUIFunctions().getMDI();
+
+			if ( mdi != null && sb_entry != null ){
+				
+				MdiEntry parent = mdi.getEntry( sb_entry.getParentID());
+				
+				if ( parent != null ){
+				
+					parent.setExpanded( b );
+				}
 			}
 		}
 	}

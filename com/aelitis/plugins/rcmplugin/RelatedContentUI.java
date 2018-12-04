@@ -56,7 +56,8 @@ RelatedContentUI
 	public void
 	addSearch(
 		String			expression,
-		String[]		networks );
+		String[]		networks,
+		boolean			no_focus );
 	
 	public void
 	destroy();

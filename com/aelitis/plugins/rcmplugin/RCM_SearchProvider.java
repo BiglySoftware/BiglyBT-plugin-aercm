@@ -132,7 +132,9 @@ public class RCM_SearchProvider
 		SearchObserver		observer )
 	
 		throws SearchException
-	{		
+	{	
+		plugin.searchReceived( search_parameters );
+		
 		try{
 			RelatedContentManager manager = RelatedContentManager.getSingleton();
 			
@@ -172,7 +174,7 @@ public class RCM_SearchProvider
 		
 		private SearchObserver				observer;
 		
-		private int	min_rank = plugin.getMinuumSearchRank();
+		private int	min_rank = plugin.getMinimumSearchRank();
 		
 		private
 		SearchObserverFilter(
