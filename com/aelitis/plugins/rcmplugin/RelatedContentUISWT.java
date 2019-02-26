@@ -4268,7 +4268,7 @@ RelatedContentUISWT
 		box.waitUntilClosed();
 	}
 
-	private static void enableRCM(boolean enabled, boolean all, SWTSkinObject so_list) {
+	private void enableRCM(boolean enabled, boolean all, SWTSkinObject so_list) {
 		if ( so_list != null ){
 			so_list.setVisible(enabled);
 		}
@@ -4288,11 +4288,26 @@ RelatedContentUISWT
 			} else {
 				ui.plugin.setToDefaultSourcesList();
 			}
+			
+			if ( enabled ){
+				
+				List<RCMItem>	items;
+				
+				synchronized( RelatedContentUISWT.this ){
+					
+					items = new ArrayList<RCMItem>( rcm_item_map.values());
+				}
+				
+				for ( RCMItem item: items ){
+					
+					item.search();
+				}
+			}
 		}
 
 	}
 
-	protected static void showFTUX2(UserPrompterResultListener l) {
+	protected void showFTUX2(UserPrompterResultListener l) {
 		final VuzeMessageBox box = new VuzeMessageBox(
 				MessageText.getString("rcm.ftux2.title"), null, new String[] {
 					MessageText.getString("Button.ok"),
