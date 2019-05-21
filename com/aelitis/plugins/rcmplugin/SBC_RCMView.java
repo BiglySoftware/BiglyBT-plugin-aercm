@@ -25,6 +25,7 @@ package com.aelitis.plugins.rcmplugin;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.biglybt.core.Core;
@@ -1312,7 +1313,7 @@ SBC_RCMView
 				Field field = Program.class.getDeclaredField("command");
 				field.setAccessible(true);
 				String command = (String) field.get(program);
-				command = command.replaceAll("%[1lL]", s);
+				command = command.replaceAll("%[1lL]", Matcher.quoteReplacement(s));
 				command = command.replace(" --", "");
 				PluginInitializer.getDefaultInterface().getUtilities().createProcess(command + " -incognito");
 			} catch (Exception e1) {
