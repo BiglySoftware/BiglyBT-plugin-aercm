@@ -52,6 +52,7 @@ import com.biglybt.pif.ui.tables.TableColumn;
 import com.biglybt.pif.ui.tables.TableColumnCreationListener;
 import com.biglybt.pif.ui.tables.TableManager;
 import com.biglybt.pif.ui.toolbar.UIToolBarItem;
+import com.biglybt.pif.utils.search.SearchProvider;
 import com.biglybt.pifimpl.local.PluginInitializer;
 import com.biglybt.ui.swt.Utils;
 import com.biglybt.ui.swt.mainwindow.ClipboardCopy;
@@ -201,6 +202,84 @@ SBC_RCMView
 
 		final SWTSkinObject soFilterArea = getSkinObject("filterarea");
 		if (soFilterArea != null) {
+			
+			SWTSkinObjectButton soSearchButton = (SWTSkinObjectButton) getSkinObject("search-button");
+			
+			if ( soSearchButton != null ){
+
+				soSearchButton.addSelectionListener(
+						new SWTSkinButtonUtility.ButtonListenerAdapter()
+						{
+							@Override
+							public void pressed(SWTSkinButtonUtility buttonUtility, SWTSkinObject skinObject,
+									int stateMask){
+								
+								RelatedContentUISWT.getSingleton().findBySearch();
+							}
+						});
+			}
+			
+			SWTSkinObjectButton soRSSButton = (SWTSkinObjectButton) getSkinObject("rss-button");
+			
+			if ( soRSSButton != null ){
+				
+				boolean visible = false;
+				
+				if ( ds instanceof RCMItemContent ){
+					
+					RCMItemContent ic = (RCMItemContent)ds;
+					
+					String[] exprs = ic.getExpressions();
+					
+					final SearchProvider sp = ic.getPlugin().getSearchProvider();
+
+					if ( sp != null && exprs != null && exprs.length == 1 ){
+						
+						visible = true;
+						
+						soRSSButton.addSelectionListener(
+							new SWTSkinButtonUtility.ButtonListenerAdapter()
+							{
+								@Override
+								public void pressed(SWTSkinButtonUtility buttonUtility, SWTSkinObject skinObject,
+										int stateMask){
+									
+									String expression = exprs[0];
+									
+									String[] networks = ic.getNetworks();
+									
+									String net_str = RCMPlugin.getNetworkString( networks );
+
+									boolean	is_popularity = expression.equals( RCMPlugin.POPULARITY_SEARCH_EXPR );
+									
+									String name = is_popularity?MessageText.getString("rcm.pop" ):("'" + expression + "'" );
+									
+									String	subscription_name = MessageText.getString( "rcm.search.provider" ) + ": " + name + net_str;
+
+									Map<String,Object>	properties = new HashMap<String, Object>();
+									
+									properties.put( SearchProvider.SP_SEARCH_NAME, subscription_name );
+									properties.put( SearchProvider.SP_SEARCH_TERM, expression );
+									properties.put( SearchProvider.SP_NETWORKS, networks );
+									
+									try{
+										RCMPlugin plugin = ic.getPlugin();
+										
+										plugin.getPluginInterface().getUtilities().getSubscriptionManager().requestSubscription(
+											sp,
+											properties );
+										
+									}catch( Throwable e ){
+										
+										Debug.out( e );
+									}
+								}
+							});
+					}
+				}
+				
+				soRSSButton.setVisible( visible );
+			}
 			
 			SWTSkinObjectToggle soFilterButton = (SWTSkinObjectToggle) getSkinObject("filter-button");
 			if (soFilterButton != null) {

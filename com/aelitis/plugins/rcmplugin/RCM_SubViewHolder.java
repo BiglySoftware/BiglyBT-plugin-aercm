@@ -31,7 +31,11 @@ import com.aelitis.plugins.rcmplugin.RelatedContentUISWT.RCMItemSubViewListener;
 
 public class RCM_SubViewHolder
 {
-	private SWTSkin				skin;
+	private final RCMPlugin		plugin;
+	private final SWTSkin		skin;
+	private final UISWTView 	view;
+
+	
 	private RCMItemSubView		current_data_source;
 	
 	private Download			dl 		= null;
@@ -54,14 +58,15 @@ public class RCM_SubViewHolder
 	private boolean initialized;
 	private Composite parent;
 	private Object datasource;
-	private UISWTView view;
 	
 	public
 	RCM_SubViewHolder(
-		UISWTView view,
-		SWTSkin	_skin  )
+		RCMPlugin	_plugin,
+		UISWTView 	_view,
+		SWTSkin		_skin  )
 	{
-		this.view = view;
+		plugin	= _plugin;
+		view 	= _view;
 		skin	= _skin;
 	}
 	
@@ -162,7 +167,7 @@ public class RCM_SubViewHolder
 		
 		if ( ds == null ){
 			
-			ds = new RCMItemSubViewEmpty();
+			ds = new RCMItemSubViewEmpty( plugin );
 		}
 		
 		so.triggerListeners( SWTSkinObjectListener.EVENT_DATASOURCE_CHANGED, ds );
@@ -340,13 +345,13 @@ public class RCM_SubViewHolder
 			
 			if ( torrent == null ){
 				
-				new_subview = new RelatedContentUISWT.RCMItemSubViewEmpty();
+				new_subview = new RelatedContentUISWT.RCMItemSubViewEmpty( plugin );
 				
 			}else{
 				
 				String[] networks = PluginCoreUtils.unwrap( dl ).getDownloadState().getNetworks();
 				
-				new_subview = new RCMItemSubView( torrent.getHash(), networks );
+				new_subview = new RCMItemSubView( plugin, torrent.getHash(), networks );
 			}
 							
 		}else if ( !related_mode && dl_file != null && dl != null ){
@@ -355,7 +360,7 @@ public class RCM_SubViewHolder
 			
 			if ( torrent == null ){
 				
-				new_subview = new RelatedContentUISWT.RCMItemSubViewEmpty();
+				new_subview = new RelatedContentUISWT.RCMItemSubViewEmpty( plugin );
 				
 			}else{
 				
@@ -363,7 +368,7 @@ public class RCM_SubViewHolder
 	
 				long file_size = dl_file.getLength();
 											
-				new_subview = new RCMItemSubView(torrent.getHash(), networks, file_size );
+				new_subview = new RCMItemSubView( plugin, torrent.getHash(), networks, file_size );
 			}
 											
 		}else if (search_strings != null){
@@ -375,13 +380,13 @@ public class RCM_SubViewHolder
 			try {
 				byte[]	dummy_hash = (name + net_str ).getBytes( "UTF-8" );
 
-				new_subview = new RCMItemSubView(dummy_hash, networks, search_strings );
+				new_subview = new RCMItemSubView( plugin, dummy_hash, networks, search_strings );
 			} catch (UnsupportedEncodingException e) {
 				return;
 			}
 			
 		} else {
-			new_subview = new RelatedContentUISWT.RCMItemSubViewEmpty();
+			new_subview = new RelatedContentUISWT.RCMItemSubViewEmpty( plugin );
 		}
 		
 		if ( !( new_subview instanceof RCMItemSubViewEmpty )){

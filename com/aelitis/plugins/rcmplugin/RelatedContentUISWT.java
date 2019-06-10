@@ -144,6 +144,8 @@ RelatedContentUISWT
 	
 	private Image			swarm_image;
 	
+	private MdiEntryCreationListener mdi_creation_listener;
+	
 	private List<MenuItem>	torrent_menus = new ArrayList<MenuItem>();
 		
 	private ByteArrayHashMap<RCMItem>	rcm_item_map = new ByteArrayHashMap<RCMItem>();
@@ -271,6 +273,13 @@ RelatedContentUISWT
 							if ( mdi_entry != null ){
 								
 								mdi_entry.close( true );
+							}
+							
+							if ( mdi_creation_listener != null ){
+								
+								mdi.deregisterEntry( SIDEBAR_SECTION_RELATED_CONTENT, mdi_creation_listener );
+								
+								mdi_creation_listener = null;
 							}
 						}
 					}catch( Throwable e ){
@@ -678,7 +687,7 @@ RelatedContentUISWT
 										"com/aelitis/plugins/rcmplugin/skins",
 										"skin3_rcm.properties" );
 								
-								rcm_subviews.put(currentView, new RCM_SubViewHolder( currentView, skin ));
+								rcm_subviews.put(currentView, new RCM_SubViewHolder( plugin, currentView, skin ));
 
 								event.getView().setDestroyOnDeactivate(false);
 
@@ -1032,53 +1041,56 @@ RelatedContentUISWT
 		
 		final RelatedContentManager f_manager = manager;
 
-		mdi.registerEntry(SIDEBAR_SECTION_RELATED_CONTENT, new MdiEntryCreationListener() {
-			@Override
-			public MdiEntry createMDiEntry(String id) {
-				
-				// might be called by auto-open
-				if (!plugin.isRCMEnabled() || !enable_ui.getValue()) {
-					return null;
-				}
-				
-				// place before the Subscriptions entry as there may be a lot of subs and we'd prefer
-				// not to be pushed right down
-				
-				MdiEntry mdiEntry = mdi.createEntryFromSkinRef(
-						MultipleDocumentInterface.SIDEBAR_HEADER_DISCOVERY,
-						SIDEBAR_SECTION_RELATED_CONTENT, "rcmview",
-						main_view_info.getTitle(),
-						main_view_info, null, true, 
-						"~" + MultipleDocumentInterface.SIDEBAR_SECTION_SUBSCRIPTIONS );
-
-				mdiEntry.setImageLeftID( "image.sidebar.rcm" );
-				
-				PluginConfig plugin_config = plugin_interface.getPluginconfig();
-				
-				if ( plugin_config.getPluginBooleanParameter( "rcm.sidebar.initial.show", true )){
+		mdi_creation_listener = 
+			new MdiEntryCreationListener() {
+				@Override
+				public MdiEntry createMDiEntry(String id) {
 					
-					String parent_id = mdiEntry.getParentID();
-				
-					if ( parent_id != null ){
+					// might be called by auto-open
+					if (!plugin.isRCMEnabled() || !enable_ui.getValue()) {
+						return null;
+					}
 					
-						MdiEntry parent = mdi.getEntry( parent_id );
+					// place before the Subscriptions entry as there may be a lot of subs and we'd prefer
+					// not to be pushed right down
+					
+					MdiEntry mdiEntry = mdi.createEntryFromSkinRef(
+							MultipleDocumentInterface.SIDEBAR_HEADER_DISCOVERY,
+							SIDEBAR_SECTION_RELATED_CONTENT, "rcmview",
+							main_view_info.getTitle(),
+							main_view_info, null, true, 
+							"~" + MultipleDocumentInterface.SIDEBAR_SECTION_SUBSCRIPTIONS );
+	
+					mdiEntry.setImageLeftID( "image.sidebar.rcm" );
+					
+					PluginConfig plugin_config = plugin_interface.getPluginconfig();
+					
+					if ( plugin_config.getPluginBooleanParameter( "rcm.sidebar.initial.show", true )){
 						
-						if ( parent != null ){
+						String parent_id = mdiEntry.getParentID();
+					
+						if ( parent_id != null ){
+						
+							MdiEntry parent = mdi.getEntry( parent_id );
 							
-							parent.setExpanded( true );
-							
-							plugin_config.setPluginParameter( "rcm.sidebar.initial.show", false );
+							if ( parent != null ){
+								
+								parent.setExpanded( true );
+								
+								plugin_config.setPluginParameter( "rcm.sidebar.initial.show", false );
+							}
 						}
 					}
+					
+					mdiEntry.setDatasource( new GeneralItem());
+	
+	
+					return mdiEntry;
 				}
-				
-				mdiEntry.setDatasource( new GeneralItem());
-
-
-				return mdiEntry;
-			}
-		});
+			};
 		
+		mdi.registerEntry( SIDEBAR_SECTION_RELATED_CONTENT, mdi_creation_listener );
+				
 		addMdiMenus(parent_id);
 		
 		rcm_listener = 
@@ -1405,51 +1417,7 @@ RelatedContentUISWT
 						selected(
 							MenuItem menu, Object target ) 
 						{
-							SimpleTextEntryWindow entryWindow = new SimpleTextEntryWindow(
-									"rcm.menu.findbyexpr.title", "rcm.menu.findbyexpr.msg" );
-							
-							if ( last_search_expr != null && last_search_expr.trim().length() > 0 ){
-								
-								entryWindow.setPreenteredText( last_search_expr, false );
-								
-								entryWindow.selectPreenteredText(true);
-							}
-							
-							entryWindow.prompt(new UIInputReceiverListener() {
-								@Override
-								public void UIInputReceiverClosed(UIInputReceiver entryWindow) {
-									if (!entryWindow.hasSubmittedInput()) {
-										return;
-									}
-									
-									String value = entryWindow.getSubmittedInput();
-									
-									boolean	ok = false;
-									
-									if ( value != null && value.length() > 0 ){
-										
-										value = value.replaceAll( ",", "" ).trim();
-										
-										String[] networks = new String[]{ AENetworkClassifier.AT_PUBLIC };
-										
-										String[] bits = value.split( ":", 2 );
-										
-										if ( bits.length == 2 ){
-											
-											String net = AENetworkClassifier.internalise( bits[0].trim() );
-											
-											if ( net != null ){
-												
-												networks[0] = net;
-												
-												value = bits[1].trim();
-											}
-										}
-																						
-										addSearch( value, networks, false );
-									}
-								}
-							}); 	
+							findBySearch();
 						}
 					});
 			
@@ -1548,6 +1516,56 @@ RelatedContentUISWT
 		}
 	}
 
+	protected void
+	findBySearch()
+	{
+		SimpleTextEntryWindow entryWindow = new SimpleTextEntryWindow(
+				"rcm.menu.findbyexpr.title", "rcm.menu.findbyexpr.msg" );
+		
+		if ( last_search_expr != null && last_search_expr.trim().length() > 0 ){
+			
+			entryWindow.setPreenteredText( last_search_expr, false );
+			
+			entryWindow.selectPreenteredText(true);
+		}
+		
+		entryWindow.prompt(new UIInputReceiverListener() {
+			@Override
+			public void UIInputReceiverClosed(UIInputReceiver entryWindow) {
+				if (!entryWindow.hasSubmittedInput()) {
+					return;
+				}
+				
+				String value = entryWindow.getSubmittedInput();
+				
+				boolean	ok = false;
+				
+				if ( value != null && value.length() > 0 ){
+					
+					value = value.replaceAll( ",", "" ).trim();
+					
+					String[] networks = new String[]{ AENetworkClassifier.AT_PUBLIC };
+					
+					String[] bits = value.split( ":", 2 );
+					
+					if ( bits.length == 2 ){
+						
+						String net = AENetworkClassifier.internalise( bits[0].trim() );
+						
+						if ( net != null ){
+							
+							networks[0] = net;
+							
+							value = bits[1].trim();
+						}
+					}
+																	
+					addSearch( value, networks, false );
+				}
+			}
+		}); 	
+	}
+	
 	@Override
 	public void
 	addSearch(
@@ -1580,7 +1598,7 @@ RelatedContentUISWT
 			
 			if (  existing_si == null ){
 	
-				final RCMItemContent new_si = new RCMItemContent( hash, networks );
+				final RCMItemContent new_si = new RCMItemContent( plugin, hash, networks );
 				
 				rcm_item_map.put( hash, new_si );
 				
@@ -1723,7 +1741,7 @@ RelatedContentUISWT
 				
 				if (  existing_si == null ){
 		
-					final RCMItemContent new_si = new RCMItemContent( dummy_hash, networks, file_size );
+					final RCMItemContent new_si = new RCMItemContent( plugin, dummy_hash, networks, file_size );
 					
 					rcm_item_map.put( dummy_hash, new_si );
 					
@@ -1903,7 +1921,7 @@ RelatedContentUISWT
 				
 				if (  existing_si == null ){
 		
-					final RCMItemContent new_si = new RCMItemContent( dummy_hash, networks, new String[] { expression });
+					final RCMItemContent new_si = new RCMItemContent( plugin, dummy_hash, networks, new String[] { expression });
 					
 					if ( is_popularity ){
 						
@@ -2526,6 +2544,8 @@ RelatedContentUISWT
 				base_listener = 
 					new RelatedContentManagerListener()
 					{
+						RelatedContentManager manager_ref = manager;
+						
 						@Override
 						public void
 						contentFound(
@@ -2535,7 +2555,7 @@ RelatedContentUISWT
 								
 									// use final ref here as manager will be nulled
 								
-								manager.removeListener( base_listener );
+								manager_ref.removeListener( base_listener );
 								
 							}else{
 							
@@ -2650,7 +2670,7 @@ RelatedContentUISWT
 			
 			String[] expressions =  map.containsKey( "expressions")?((List<String>)map.get( "expressions" )).toArray( new String[0] ):null;
 			
-			RCMItemContent result =  new RCMItemContent(hash, networks, expressions );
+			RCMItemContent result =  new RCMItemContent( plugin, hash, networks, expressions );
 			
 			result.search();
 		
@@ -2675,6 +2695,7 @@ RelatedContentUISWT
 	RCMItemContent
 		implements RCMItem, DataSourceResolver.ExportableDataSource
 	{	
+		private final RCMPlugin		plugin;
 		private byte[]				hash;
 		private long				file_size;
 		private String[]			expressions;
@@ -2707,19 +2728,23 @@ RelatedContentUISWT
 		
 		protected
 		RCMItemContent(
+			RCMPlugin	_plugin,	
 			byte[]		_hash,
 			String[]	_networks )
 		{
+			plugin		= _plugin;
 			hash		= _hash;
 			networks	= _networks;
 		}
 		
 		protected
 		RCMItemContent(
+			RCMPlugin	_plugin,	
 			byte[]		_hash,
 			String[]	_networks,
 			long		_file_size )
 		{
+			plugin		= _plugin;
 			hash		= _hash;
 			networks	= _networks;
 			file_size	= _file_size;
@@ -2727,13 +2752,21 @@ RelatedContentUISWT
 		
 		protected
 		RCMItemContent(
+			RCMPlugin	_plugin,	
 			byte[]		_hash,
 			String[]	_networks,
 			String[]	_expressions )
 		{
+			plugin		= _plugin;
 			hash		= _hash;
 			networks	= _networks;
 			expressions	= _expressions;
+		}
+		
+		protected RCMPlugin
+		getPlugin()
+		{
+			return( plugin );
 		}
 		
 		private void
@@ -2762,7 +2795,7 @@ RelatedContentUISWT
 			return( popularity );
 		}
 		
-		private String[]
+		protected String[]
 		getExpressions()
 		{
 			return( expressions );
@@ -2775,7 +2808,7 @@ RelatedContentUISWT
 			expressions = e;
 		}
 		
-		private String[]
+		protected String[]
 		getNetworks()
 		{
 			return( networks );
@@ -3477,28 +3510,31 @@ RelatedContentUISWT
 		
 		protected
 		RCMItemSubView(
+			RCMPlugin	_plugin,
 			byte[]		_hash,
 			String[]	_networks )
 		{
-			super( _hash, _networks );
+			super( _plugin, _hash, _networks );
 		}
 		
 		protected
 		RCMItemSubView(
+			RCMPlugin	_plugin,
 			byte[]		_hash,
 			String[]	_networks,
 			long		_file_size )
 		{
-			super( _hash, _networks, _file_size );
+			super( _plugin, _hash, _networks, _file_size );
 		}
 		
 		protected
 		RCMItemSubView(
+			RCMPlugin	_plugin,
 			byte[]		_hash,
 			String[]	_networks,
 			String[]		s )
 		{
-			super( _hash, _networks, s );
+			super( _plugin, _hash, _networks, s );
 		}
 		
 		protected void
@@ -3608,9 +3644,10 @@ RelatedContentUISWT
 	RCMItemSubViewEmpty
 		extends RCMItemSubView
 	{
-		RCMItemSubViewEmpty()
+		RCMItemSubViewEmpty(
+			RCMPlugin		plugin )
 		{
-			super( new byte[0], new String[]{ AENetworkClassifier.AT_PUBLIC });
+			super( plugin, new byte[0], new String[]{ AENetworkClassifier.AT_PUBLIC });
 		}
 		
 		@Override
