@@ -1900,28 +1900,28 @@ RelatedContentUISWT
 	@Override
 	public void
 	addSearch(
-		final String 		expression,
-		final String[]		networks,
-		boolean				no_focus )
+		String 			original_expression,
+		String[]		networks,
+		boolean			no_focus )
 	{
-		last_search_expr	= expression;
+		last_search_expr	= original_expression;
 		
-		final boolean	is_popularity = expression.equals( RCMPlugin.POPULARITY_SEARCH_EXPR );
+		final boolean	is_popularity = original_expression.equals( RCMPlugin.POPULARITY_SEARCH_EXPR );
 		
-		final String name = is_popularity?MessageText.getString("rcm.pop" ):("'" + expression + "'" );
+		final String name = is_popularity?MessageText.getString("rcm.pop" ):("'" + original_expression + "'" );
 		
 		try{
 			synchronized( this ){
 				
 				final String net_str = RCMPlugin.getNetworkString( networks );
 				
-				final byte[]	dummy_hash = (name + net_str ).getBytes( "UTF-8" );
+				byte[]	original_dummy_hash = (name + net_str ).getBytes( Constants.UTF_8 );
 				
-				final RCMItem existing_si = rcm_item_map.get( dummy_hash );
+				final RCMItem existing_si = rcm_item_map.get( original_dummy_hash );
 				
 				if (  existing_si == null ){
 		
-					final RCMItemContent new_si = new RCMItemContent( plugin, dummy_hash, networks, new String[] { expression });
+					final RCMItemContent new_si = new RCMItemContent( plugin, original_dummy_hash, networks, new String[] { original_expression });
 					
 					if ( is_popularity ){
 						
@@ -1930,11 +1930,19 @@ RelatedContentUISWT
 						new_si.setMinVersion( RelatedContent.VERSION_BETTER_SCRAPE );
 					}
 					
-					rcm_item_map.put( dummy_hash, new_si );
+					rcm_item_map.put( original_dummy_hash, new_si );
 					
 					Utils.execSWTThread(
 						new Runnable()
 						{
+							private String
+							getLatestExpression()
+							{
+								String[] expressions = new_si.getExpressions();
+								
+								return( (expressions==null||expressions.length==0)?original_expression:expressions[0]);
+							}
+							
 							@Override
 							public void
 							run()
@@ -1950,7 +1958,7 @@ RelatedContentUISWT
 									
 									new_si.setView( view );
 									
-									String key = "RCM_" + ByteFormatter.encodeString( dummy_hash );
+									String key = "RCM_" + ByteFormatter.encodeString( original_dummy_hash );
 									
 									MultipleDocumentInterface mdi = UIFunctionsManager.getUIFunctions().getMDI();
 									
@@ -1969,7 +1977,7 @@ RelatedContentUISWT
 												MdiEntry 	entry,
 												boolean 	user) 
 											{
-												removeFromItemMap(dummy_hash);
+												removeFromItemMap( new_si.getHash());
 											}
 										});
 									
@@ -1997,7 +2005,7 @@ RelatedContentUISWT
 												MenuItem			menu,
 												Object 				target )
 											{
-												addSearch( expression, networks, false );
+												addSearch( getLatestExpression(), networks, false );
 											}
 										});
 											
@@ -2015,10 +2023,10 @@ RelatedContentUISWT
 												{
 													SimpleTextEntryWindow entryWindow = new SimpleTextEntryWindow(
 															"rcm.menu.findbyexpr.title", "rcm.menu.findbyexpr.msg" );
+																						
+													String old_value =  getLatestExpression();
 													
-													String[] expressions = new_si.getExpressions();
-																											
-													entryWindow.setPreenteredText( expressions[0], false );
+													entryWindow.setPreenteredText( old_value, false );
 														
 													entryWindow.selectPreenteredText(true);
 													
@@ -2031,21 +2039,37 @@ RelatedContentUISWT
 															
 															String value = entryWindow.getSubmittedInput();
 																														
-															if ( value != null && value.length() > 0 ){
+															if ( value != null && value.length() > 0 && !value.equals( old_value )){
 																
 																value = value.replaceAll( ",", "" ).trim();
 																
 																last_search_expr = value;
 																
 																new_si.setExpressions( new String[]{ value });
-																
-																new_si.search();
-																
+																																
 																String new_name = "'" + value + "'" + RCMPlugin.getNetworkString( new_si.getNetworks());
 																
 																view.setTitle( new_name );
 																
-																// should probably remap entry in rcm_item_map as the key has changed but woreva
+																byte[]	new_dummy_hash = (new_name + net_str ).getBytes( Constants.UTF_8 );
+																
+																synchronized( RelatedContentUISWT.this ){
+																
+																	rcm_item_map.remove( new_si.getHash());
+																	
+																	new_si.setHash( new_dummy_hash );
+																	
+																	RCMItem existing_si = rcm_item_map.get( new_dummy_hash );
+
+																	if ( existing_si != null ){
+																		
+																		existing_si.getMdiEntry().close( true );
+																	}
+																	
+																	rcm_item_map.put( new_dummy_hash, new_si );
+																}
+																
+																new_si.search();
 															}
 														}
 													}); 	
@@ -2057,8 +2081,6 @@ RelatedContentUISWT
 									
 										// create subscription
 									
-									final String[]	subscription_name = { MessageText.getString( "rcm.search.provider" ) + ": " + name + net_str };
-
 									final SearchProvider sp = plugin.getSearchProvider();
 									
 									if ( sp != null ){
@@ -2092,8 +2114,8 @@ RelatedContentUISWT
 												{
 													Map<String,Object>	properties = new HashMap<String, Object>();
 																										
-													properties.put( SearchProvider.SP_SEARCH_NAME, subscription_name[0] );
-													properties.put( SearchProvider.SP_SEARCH_TERM, expression );
+													properties.put( SearchProvider.SP_SEARCH_NAME, MessageText.getString( "rcm.search.provider" ) + ": " + view.getTitle());
+													properties.put( SearchProvider.SP_SEARCH_TERM, getLatestExpression() );
 													properties.put( SearchProvider.SP_NETWORKS, networks );
 													
 													try{
@@ -2123,8 +2145,8 @@ RelatedContentUISWT
 												{
 													Map<String,Object>	properties = new HashMap<String, Object>();
 																										
-													properties.put( SearchProvider.SP_SEARCH_NAME, subscription_name[0] );
-													properties.put( SearchProvider.SP_SEARCH_TERM, expression );
+													properties.put( SearchProvider.SP_SEARCH_NAME, MessageText.getString( "rcm.search.provider" ) + ": " + view.getTitle() );
+													properties.put( SearchProvider.SP_SEARCH_TERM, getLatestExpression() );
 													properties.put( SearchProvider.SP_NETWORKS, networks );
 													
 														// hack for the moment
@@ -2194,7 +2216,7 @@ RelatedContentUISWT
 														"rcm.menu.rename.title", 
 														"rcm.menu.rename.msg" );
 																	
-												entryWindow.setPreenteredText( subscription_name[0], false );
+												entryWindow.setPreenteredText( view.getTitle(), false );
 													
 												entryWindow.selectPreenteredText(true);
 												
@@ -2208,9 +2230,7 @@ RelatedContentUISWT
 														String value = entryWindow.getSubmittedInput();
 																												
 														if ( value != null && value.length() > 0 ){
-															
-															subscription_name[0] = value;
-															
+																														
 															view.setTitle( value );
 														}
 													}
@@ -2634,12 +2654,22 @@ RelatedContentUISWT
 		setMdiEntry(
 			MdiEntry _sb_entry );
 		
+		public MdiEntry
+		getMdiEntry();
+		
 		public void
 		activate();
 		
 		public void
 		setExpanded(
 			boolean	b );
+		
+		public void
+		setHash(
+			byte[]		hash );
+		
+		public byte[]
+		getHash();
 		
 		public void
 		search();
@@ -2782,6 +2812,21 @@ RelatedContentUISWT
 			return( min_version );
 		}
 		
+		@Override
+		public void 
+		setHash(
+			byte[] _hash )
+		{
+			hash	= _hash;
+		}
+		
+		@Override
+		public byte[] 
+		getHash()
+		{
+			return( hash );
+		}
+		
 		private void
 		setPopularity(
 			boolean		b )
@@ -2901,6 +2946,13 @@ RelatedContentUISWT
 			}
 			
 			search();
+		}
+		
+		@Override
+		public MdiEntry 
+		getMdiEntry()
+		{
+			return( sb_entry );
 		}
 		
 		@Override
@@ -3713,6 +3765,21 @@ RelatedContentUISWT
 		}
 		
 		@Override
+		public void 
+		setHash(
+			byte[] _hash )
+		{
+			hash	= _hash;
+		}
+		
+		@Override
+		public byte[] 
+		getHash()
+		{
+			return( hash );
+		}
+		
+		@Override
 		public void
 		setMdiEntry(
 			MdiEntry _sb_entry )
@@ -3726,6 +3793,13 @@ RelatedContentUISWT
 			spinner = sb_entry.addVitalityImage( SPINNER_IMAGE_ID );
 
 			search();
+		}
+		
+		@Override
+		public MdiEntry 
+		getMdiEntry()
+		{
+			return( sb_entry );
 		}
 		
 		@Override

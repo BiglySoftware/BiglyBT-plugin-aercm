@@ -235,16 +235,27 @@ SBC_RCMView
 
 					if ( sp != null && exprs != null && exprs.length == 1 ){
 						
+						String original_expr = exprs[0];
+						
 						visible = true;
 						
 						soRSSButton.addSelectionListener(
 							new SWTSkinButtonUtility.ButtonListenerAdapter()
 							{
+								private String
+								getLatestExpression()
+								{
+									String[] expressions = ic.getExpressions();
+									
+									return( (expressions==null||expressions.length==0)?original_expr:expressions[0]);
+								}
+
+								
 								@Override
 								public void pressed(SWTSkinButtonUtility buttonUtility, SWTSkinObject skinObject,
 										int stateMask){
 									
-									String expression = exprs[0];
+									String expression = getLatestExpression();
 									
 									String[] networks = ic.getNetworks();
 									
