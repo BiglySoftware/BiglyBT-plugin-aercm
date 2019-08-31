@@ -37,6 +37,8 @@ import com.biglybt.ui.selectedcontent.SelectedContent;
 import com.biglybt.ui.selectedcontent.SelectedContentManager;
 import com.biglybt.ui.swt.skin.*;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.CTabFolder;
+import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.events.*;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.*;
@@ -56,12 +58,15 @@ import com.biglybt.pif.utils.search.SearchProvider;
 import com.biglybt.pifimpl.local.PluginInitializer;
 import com.biglybt.ui.swt.Utils;
 import com.biglybt.ui.swt.mainwindow.ClipboardCopy;
+import com.biglybt.ui.swt.mainwindow.TorrentOpener;
 import com.biglybt.ui.swt.views.table.TableViewSWT;
 import com.biglybt.ui.swt.views.table.TableViewSWTMenuFillListener;
 import com.biglybt.ui.swt.views.table.impl.TableViewFactory;
 
 import com.biglybt.core.CoreFactory;
+import com.biglybt.core.content.ContentException;
 import com.biglybt.core.content.RelatedContent;
+import com.biglybt.core.content.RelatedContentLookupListener;
 import com.biglybt.core.content.RelatedContentManager;
 import com.biglybt.core.content.RelatedContentManagerListener;
 import com.biglybt.ui.UIFunctions;
@@ -74,6 +79,10 @@ import com.biglybt.ui.swt.UIFunctionsManagerSWT;
 import com.biglybt.ui.swt.mdi.MultipleDocumentInterfaceSWT;
 import com.biglybt.ui.swt.views.skin.InfoBarUtil;
 import com.biglybt.ui.swt.views.skin.SkinView;
+import com.biglybt.ui.swt.views.stats.GeneralOpsPanel;
+import com.biglybt.ui.swt.views.stats.GeneralOpsPanel.Node;
+import com.biglybt.ui.swt.views.stats.GeneralOpsPanel.NodeEvent;
+import com.biglybt.ui.swt.views.stats.GeneralOpsPanel.State;
 import com.aelitis.plugins.rcmplugin.RelatedContentUISWT.RCMItemContent;
 import com.aelitis.plugins.rcmplugin.RelatedContentUISWT.RCMItemSubView;
 import com.aelitis.plugins.rcmplugin.RelatedContentUISWT.RCMItemSubscriptions;
@@ -101,10 +110,12 @@ SBC_RCMView
 		}
 	}
 	
-	private TableViewSWT<RelatedContent> tv_related_content;
+	private TableViewSWT<RelatedContent> 	tv_related_content;
 
+	private OpsContainer					general_ops_panel;
+	
 	private MdiEntry 			mdi_entry;
-	private Composite			table_parent;
+	private CTabFolder 			tab_folder;
 	private boolean				space_reserved;
 	
 	
@@ -760,7 +771,41 @@ SBC_RCMView
 		
 		if ( so_list != null ){
 			
-			initTable((Composite) so_list.getControl());
+			Composite composite = (Composite) so_list.getControl();
+			
+			tab_folder = new CTabFolder(composite, SWT.LEFT);
+
+			tab_folder.setLayoutData( Utils.getFilledFormData());
+			
+			CTabItem list_item = new CTabItem(tab_folder, SWT.NULL);
+
+			list_item.setText( MessageText.getString( "rcm.list" ));
+
+			Composite list_composite = new Composite( tab_folder, SWT.NULL );
+
+			list_item.setControl( list_composite );
+		
+			list_composite.setLayout(new FormLayout());
+			list_composite.setLayoutData( Utils.getFilledFormData());											
+
+			CTabItem explore_item = new CTabItem(tab_folder, SWT.NULL);
+
+			explore_item.setText( MessageText.getString( "rcm.explore" ));
+
+			Composite explore_composite = new Composite( tab_folder, SWT.NULL );
+
+			explore_composite.setLayout(new FillLayout());
+			explore_composite.setLayoutData( Utils.getFilledFormData());
+
+			explore_item.setControl( explore_composite );
+						
+			tab_folder.setSelection( list_item );			
+								
+			TableViewSWT<RelatedContent> table = initTable( list_composite );
+			
+			initExplore( table, explore_composite );
+						
+			composite.layout( true );
 		}
 		
 		paramSourceListener = new ParameterListener() {
@@ -784,6 +829,13 @@ SBC_RCMView
 				tv_related_content = null;
 			}
 			
+			if ( general_ops_panel != null ){
+				
+				general_ops_panel.delete();
+				
+				general_ops_panel = null;
+			}
+			
 			if (manager != null && current_rcm_listener != null) {
 				
 				manager.removeListener( current_rcm_listener );
@@ -793,7 +845,7 @@ SBC_RCMView
 		}
 
 		Utils.disposeSWTObjects(new Object[] {
-			table_parent,
+			tab_folder,
 		});
 
 		COConfigurationManager.removeParameterListener(RCMPlugin.PARAM_SOURCES_LIST, paramSourceListener);
@@ -837,6 +889,13 @@ SBC_RCMView
 				
 				tv_related_content = null;
 			}
+			
+			if ( general_ops_panel != null ){
+				
+				general_ops_panel.delete();
+				
+				general_ops_panel = null;
+			}
 
 			if (manager != null && current_rcm_listener != null) {
 				
@@ -847,7 +906,7 @@ SBC_RCMView
 		}
 		
 		Utils.disposeSWTObjects(new Object[] {
-			table_parent,
+			tab_folder,
 		});
 
 		if ( space_reserved ){
@@ -860,7 +919,7 @@ SBC_RCMView
 		return( super.skinObjectDestroyed(skinObject, params));
 	}
 	
-	private void 
+	private TableViewSWT<RelatedContent> 
 	initTable(
 		Composite control ) 
 	{
@@ -918,7 +977,7 @@ SBC_RCMView
 			}
 		}
 		
-		table_parent = new Composite(control, SWT.NONE);
+		Composite table_parent = new Composite(control, SWT.NONE);
 		table_parent.setLayoutData(Utils.getFilledFormData());
 		GridLayout layout = new GridLayout();
 		layout.marginHeight = layout.marginWidth = layout.verticalSpacing = layout.horizontalSpacing = 0;
@@ -1002,9 +1061,6 @@ SBC_RCMView
 		tableLifeCycleListener = new MyTableLifeCycleListener();
 		tv_related_content.addLifeCycleListener(tableLifeCycleListener);
 
-		RelatedContentUISWT ui = RelatedContentUISWT.getSingleton();
-		
-		final Image	swarm_image = ui==null?null:ui.getSwarmImage();
 		
 		tv_related_content.addMenuFillListener(
 			new TableViewSWTMenuFillListener() 
@@ -1019,149 +1075,7 @@ SBC_RCMView
 
 					System.arraycopy(_related_content, 0, related_content, 0, related_content.length);
 
-					final MenuItem assoc_item = new MenuItem(menu, SWT.PUSH);
-
-					if ( swarm_image != null && !swarm_image.isDisposed()){
-					
-						assoc_item.setImage( swarm_image );
-					}
-					
-					assoc_item.setText(MessageText.getString("rcm.menu.discovermore"));
-
-					final ArrayList<RelatedContent> assoc_ok = new ArrayList<RelatedContent>();
-					
-					for ( RelatedContent c: related_content ){
-						
-						if ( c.getHash() != null ){
-							
-							assoc_ok.add( c );
-						}
-					}
-					
-					assoc_item.addSelectionListener(new SelectionAdapter() {
-						@Override
-						public void widgetSelected(SelectionEvent e ){
-							
-							int	 i = 0;
-							
-							RelatedContentUISWT ui = RelatedContentUISWT.getSingleton();
-							
-							if ( ui != null ){
-								
-								for ( RelatedContent c: assoc_ok ){
-								
-									ui.addSearch( c.getHash(), c.getNetworks(), c.getTitle());
-									
-									i++;
-									
-									if ( i > 8 ){
-										
-										break;
-									}
-								}
-							}
-						};
-					});
-					
-					if ( assoc_ok.size() == 0 ){
-						
-						assoc_item.setEnabled( false );
-					}
-					
-					MenuItem item;
-
-					
-					new MenuItem(menu, SWT.SEPARATOR );
-
-					item = new MenuItem(menu, SWT.PUSH);
-					item.setText(MessageText.getString("rcm.menu.google.hash"));
-					item.addSelectionListener(new SelectionAdapter() {
-						@Override
-						public void widgetSelected(SelectionEvent e) {
-							String s = ByteFormatter.encodeString(related_content[0].getHash());
-							String URL = "https://google.com/search?q=" + UrlUtils.encode(s);
-							launchURL(URL);
-						};
-					});
-
-					item = new MenuItem(menu, SWT.PUSH);
-					item.setText(MessageText.getString("rcm.menu.gis"));
-					item.addSelectionListener(new SelectionAdapter() {
-						@Override
-						public void widgetSelected(SelectionEvent e) {
-							String s = related_content[0].getTitle();
-							s = s.replaceAll("[-_]", " ");
-							String URL = "http://images.google.com/images?q=" + UrlUtils.encode(s);
-							launchURL(URL);
-						}
-
-					});
-
-					item = new MenuItem(menu, SWT.PUSH);
-					item.setText(MessageText.getString("rcm.menu.google"));
-					item.addSelectionListener(new SelectionAdapter() {
-						@Override
-						public void widgetSelected(SelectionEvent e) {
-							String s = related_content[0].getTitle();
-							s = s.replaceAll("[-_]", " ");
-							String URL = "https://google.com/search?q=" + UrlUtils.encode(s);
-							launchURL(URL);
-						};
-					});
-
-					item = new MenuItem(menu, SWT.PUSH);
-					item.setText(MessageText.getString("rcm.menu.bis"));
-					item.addSelectionListener(new SelectionAdapter() {
-						@Override
-						public void widgetSelected(SelectionEvent e) {
-							String s = related_content[0].getTitle();
-							s = s.replaceAll("[-_]", " ");
-							String URL = "http://www.bing.com/images/search?q=" + UrlUtils.encode(s);
-							launchURL(URL);
-						};
-					});
-
-					new MenuItem(menu, SWT.SEPARATOR );
-					
-					item = new MenuItem(menu, SWT.PUSH);
-					item.setText(MessageText.getString("rcm.menu.uri"));
-					item.addSelectionListener(new SelectionAdapter() {
-						@Override
-						public void widgetSelected(SelectionEvent e) {
-							
-							ClipboardCopy.copyToClipBoard( RCMPlugin.getMagnetURI(related_content[0]));
-						};
-					});
-					
-					if ( related_content.length==1 ){
-						byte[] hash = related_content[0].getHash();
-						item.setEnabled(hash!=null&&hash.length > 0 );
-					}else{
-						item.setEnabled(false);
-					}
-					
-					item = new MenuItem(menu, SWT.PUSH);
-					item.setText(MessageText.getString("rcm.menu.uri.i2p"));
-					item.addSelectionListener(new SelectionAdapter() {
-						@Override
-						public void widgetSelected(SelectionEvent e) {
-							
-							String[] magnet_uri = { RCMPlugin.getMagnetURI(related_content[0]) };
-							
-							UrlUtils.extractNetworks( magnet_uri );
-							
-							String i2p_only_uri = magnet_uri[0] + "&net=" + UrlUtils.encode( AENetworkClassifier.AT_I2P );
-							
-							ClipboardCopy.copyToClipBoard( i2p_only_uri );
-						};
-					});
-					
-					if ( related_content.length==1 ){
-						byte[] hash = related_content[0].getHash();
-						item.setEnabled(hash!=null&&hash.length > 0 );
-					}else{
-						item.setEnabled(false);
-					}
+					addMenus( menu, related_content );
 					
 					new MenuItem(menu, SWT.SEPARATOR );
 
@@ -1256,8 +1170,513 @@ SBC_RCMView
 		}
 		
 		tv_related_content.initialize( table_parent );
+		
+		return( tv_related_content );
+	}
+	
+	private void
+	addMenus(
+		Menu				menu,
+		RelatedContent[]	related_content )
+	{
+		RelatedContentUISWT ui = RelatedContentUISWT.getSingleton();
+		
+		final Image	swarm_image = ui==null?null:ui.getSwarmImage();
 
-		control.layout(true);
+		final MenuItem assoc_item = new MenuItem(menu, SWT.PUSH);
+
+		if ( swarm_image != null && !swarm_image.isDisposed()){
+		
+			assoc_item.setImage( swarm_image );
+		}
+		
+		assoc_item.setText(MessageText.getString("rcm.menu.discovermore"));
+
+		final ArrayList<RelatedContent> assoc_ok = new ArrayList<RelatedContent>();
+		
+		for ( RelatedContent c: related_content ){
+			
+			byte[] hash = c.getHash();
+			
+			if ( hash != null && hash.length > 0 ){
+				
+				assoc_ok.add( c );
+			}
+		}
+		
+		assoc_item.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e ){
+				
+				int	 i = 0;
+				
+				RelatedContentUISWT ui = RelatedContentUISWT.getSingleton();
+				
+				if ( ui != null ){
+					
+					for ( RelatedContent c: assoc_ok ){
+					
+						ui.addSearch( c.getHash(), c.getNetworks(), c.getTitle());
+						
+						i++;
+						
+						if ( i > 8 ){
+							
+							break;
+						}
+					}
+				}
+			};
+		});
+		
+		if ( assoc_ok.size() == 0 ){
+			
+			assoc_item.setEnabled( false );
+		}
+		
+		MenuItem item;
+	
+		new MenuItem(menu, SWT.SEPARATOR );
+
+		item = new MenuItem(menu, SWT.PUSH);
+		item.setText(MessageText.getString("rcm.menu.google.hash"));
+		item.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				String s = ByteFormatter.encodeString(related_content[0].getHash());
+				String URL = "https://google.com/search?q=" + UrlUtils.encode(s);
+				launchURL(URL);
+			};
+		});
+
+		if ( related_content.length==1 ){
+			byte[] hash = related_content[0].getHash();
+			item.setEnabled(hash!=null&&hash.length > 0 );
+		}else{
+			item.setEnabled(false);
+		}
+		
+		item = new MenuItem(menu, SWT.PUSH);
+		item.setText(MessageText.getString("rcm.menu.gis"));
+		item.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				String s = related_content[0].getTitle();
+				s = s.replaceAll("[-_]", " ");
+				String URL = "http://images.google.com/images?q=" + UrlUtils.encode(s);
+				launchURL(URL);
+			}
+
+		});
+
+		item.setEnabled( related_content.length==1 );
+		
+		item = new MenuItem(menu, SWT.PUSH);
+		item.setText(MessageText.getString("rcm.menu.google"));
+		item.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				String s = related_content[0].getTitle();
+				s = s.replaceAll("[-_]", " ");
+				String URL = "https://google.com/search?q=" + UrlUtils.encode(s);
+				launchURL(URL);
+			};
+		});
+
+		item.setEnabled( related_content.length==1 );
+
+		item = new MenuItem(menu, SWT.PUSH);
+		item.setText(MessageText.getString("rcm.menu.bis"));
+		item.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				String s = related_content[0].getTitle();
+				s = s.replaceAll("[-_]", " ");
+				String URL = "http://www.bing.com/images/search?q=" + UrlUtils.encode(s);
+				launchURL(URL);
+			};
+		});
+
+		item.setEnabled( related_content.length==1 );
+
+		new MenuItem(menu, SWT.SEPARATOR );
+		
+		item = new MenuItem(menu, SWT.PUSH);
+		item.setText(MessageText.getString("rcm.menu.uri"));
+		item.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				
+				ClipboardCopy.copyToClipBoard( RCMPlugin.getMagnetURI(related_content[0]));
+			};
+		});
+		
+		if ( related_content.length==1 ){
+			byte[] hash = related_content[0].getHash();
+			item.setEnabled(hash!=null&&hash.length > 0 );
+		}else{
+			item.setEnabled(false);
+		}
+		
+		item = new MenuItem(menu, SWT.PUSH);
+		item.setText(MessageText.getString("rcm.menu.uri.i2p"));
+		item.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				
+				String[] magnet_uri = { RCMPlugin.getMagnetURI(related_content[0]) };
+				
+				UrlUtils.extractNetworks( magnet_uri );
+				
+				String i2p_only_uri = magnet_uri[0] + "&net=" + UrlUtils.encode( AENetworkClassifier.AT_I2P );
+				
+				ClipboardCopy.copyToClipBoard( i2p_only_uri );
+			};
+		});
+		
+		if ( related_content.length==1 ){
+			byte[] hash = related_content[0].getHash();
+			item.setEnabled(hash!=null&&hash.length > 0 );
+		}else{
+			item.setEnabled(false);
+		}
+	}
+	private void
+	initExplore(
+		TableViewSWT<RelatedContent>		table,
+		Composite							comp )
+	{
+		general_ops_panel = new OpsContainer( table, comp );
+	}
+	
+	private class
+	OpsContainer
+	{
+		private final Object	gop_lock = new Object();
+		
+		private TableViewSWT<RelatedContent>		table;
+		private GeneralOpsPanel						gop;
+		
+		private Map<RelatedContent,RCMActivity>		activities = new TreeMap<>(
+				(o1,o2)->{
+					int result =  o1.getSeeds() - o2.getSeeds();
+					
+					if ( result == 0 ){
+						
+						result = o1.getTitle().compareTo( o2.getTitle());
+					}
+					
+					return( result );
+				});
+		
+		private Set<RelatedContent>	found_rc	= new HashSet<>();
+		
+		private
+		OpsContainer(
+			TableViewSWT<RelatedContent>		_table,
+			Composite							comp )
+		{
+			table	= _table;
+			
+			gop = new GeneralOpsPanel( comp );
+		}
+		
+		private void
+		delete()
+		{	
+		}
+		
+		private void
+		refresh()
+		{
+			TableRowCore[] rows = table.getRows();
+			
+			synchronized( gop_lock ){
+
+				for ( TableRowCore row: rows ){
+					
+					RelatedContent rc = (RelatedContent)row.getDataSource();
+					
+						
+					if ( found_rc.contains( rc )){
+						
+						continue;
+					}
+						
+					found_rc.add( rc );
+					
+					if ( rc.getHash() == null || rc instanceof RelatedContentUISWT.SubsRelatedContent ){
+						
+						continue;
+					}
+					
+					if ( activities.get( rc ) == null ){
+						
+						RCMActivity act = new RCMActivity( rc );
+						
+						activities.put( rc, act );
+						
+						if ( activities.size() > 10 ){
+							
+							Iterator<RCMActivity> it = activities.values().iterator();
+						
+							RCMActivity to_delete = it.next();
+								
+							it.remove();
+
+							if ( to_delete == act ){
+								
+								act = null;
+								
+							}else{
+																
+								gop.activityChanged( to_delete,  true );
+							}						
+						}
+						
+						if ( act != null ){
+						
+							gop.activityChanged( act,  false );
+						}
+					}
+				}
+			}
+			
+			gop.refresh();
+		}
+	
+		private class
+		RCMActivity
+			implements GeneralOpsPanel.Activity, GeneralOpsPanel.State
+		{
+			private RCMActivityNode	root;
+			
+			private
+			RCMActivity(
+				RelatedContent	_rc )
+			{
+				root = new RCMActivityNode(_rc);
+				
+				root.addChild(new RCMActivityNode(_rc));
+			}
+			
+			public String
+			getDescription()
+			{
+				return( "" );
+			}
+			
+			public int
+			getType()
+			{
+				return( GeneralOpsPanel.Activity.TYPE_3 );
+			}
+			
+			public boolean
+			isQueued()
+			{
+				return( false );
+			}
+			
+			public State
+			getCurrentState()
+			{
+				return( this );
+			}
+			
+			public Node
+			getRootNode()
+			{
+				return( root );
+			}
+			
+			public int
+			getDepth()
+			{
+				return( 2 );
+			}
+			
+			public String
+			getResult()
+			{
+				return( "" );
+			}
+		}
+	
+		private class
+		RCMActivityNode
+			implements GeneralOpsPanel.Node
+		{
+			private RelatedContent		rc;
+		
+			private CopyOnWriteList<Node>		kids = new CopyOnWriteList<>();
+			
+			private boolean	searched 	= false;
+			private boolean search_done = false;
+			
+			private Map<RelatedContent,RCMActivityNode>		results = new TreeMap<>(
+					(o1,o2)->{
+						int result =  o1.getSeeds() - o2.getSeeds();
+						
+						if ( result == 0 ){
+							
+							result = o1.getTitle().compareTo( o2.getTitle());
+						}
+						
+						return( result );
+					});
+			
+			private
+			RCMActivityNode(
+				RelatedContent	_rc )
+			{
+				rc		= _rc;
+			}
+			
+			public String
+			getName()
+			{
+				return( rc.getTitle());
+			}
+			
+			@Override
+			public Object 
+			eventOccurred(NodeEvent ev)
+			{
+				if ( ev.getType() == NodeEvent.ET_MENU ){
+					
+					Menu menu = (Menu)ev.getData();
+					
+					MenuItem mi = new MenuItem( menu, SWT.PUSH );
+					
+					mi.setText( MessageText.getString("v3.MainWindow.button.download"));
+					
+					new MenuItem(menu, SWT.SEPARATOR );
+					
+					addMenus( menu, new RelatedContent[]{ rc });
+					
+					mi.addSelectionListener(
+						SelectionListener.widgetSelectedAdapter(
+							(e)->{
+								
+								TorrentOpener.openTorrent( RCMPlugin.getMagnetURI( rc ));
+							}));
+						
+				}else if ( ev.getType() == NodeEvent.ET_CLICKED ){
+					
+					if ( searched ){
+						
+						return( null );
+					}
+					
+					searched = true;
+					
+					try{
+						manager.lookupContent( 
+							rc.getHash(), 
+							rc.getNetworks(),
+							new RelatedContentLookupListener(){
+								
+								@Override
+								public void lookupStart(){
+								}
+								
+								@Override
+								public void lookupFailed(ContentException error){
+									search_done = true;
+								}
+								
+								@Override
+								public void lookupComplete(){
+									search_done = true;
+								}
+								
+								@Override
+								public void contentFound(RelatedContent[] content){
+									
+									synchronized( gop_lock ){
+										
+										for ( RelatedContent rc: content ){
+											
+											if ( found_rc.contains( rc )){
+												
+												continue;
+											}
+											
+											found_rc.add( rc );
+											
+											if ( rc.getHash() == null || rc instanceof RelatedContentUISWT.SubsRelatedContent ){
+												
+												continue;
+											}
+											
+											RCMActivityNode node = new RCMActivityNode( rc );
+											
+											results.put( rc, node );
+											
+											if ( results.size() > 10 ){
+																					
+												Iterator<RCMActivityNode> it = results.values().iterator();
+																				
+												RCMActivityNode to_delete = it.next();
+												
+												it.remove();
+																								
+												if ( to_delete == node ){
+													
+													node = null;
+													
+												}else{
+													
+													removeChild( to_delete );
+												}
+												
+											}
+											
+											if ( node != null ){
+											
+												addChild( node );
+											}
+										}
+									}
+								}
+							});
+					}catch( Throwable e){
+						
+						Debug.out( e );
+					}
+				}
+				
+				return( null );
+			}
+			
+			@Override
+			public int 
+			getType()
+			{
+				return( searched?search_done?TYPE_3:TYPE_2:TYPE_1 );
+			}
+			
+			private void
+			addChild(
+				Node	n )
+			{				
+				kids.add( n );
+			}
+			
+			private void
+			removeChild(
+				Node	n )
+			{				
+				kids.remove( n );
+			}
+			
+			public List<Node>
+			getChildren()
+			{
+				return( kids.getList());
+			}
+		}
 	}
 	
 	private void userDelete(RelatedContent[] related_content) {
@@ -1312,6 +1731,11 @@ SBC_RCMView
 		if ( tv_related_content != null ){
 			
 			tv_related_content.refreshTable( false );
+		}
+		
+		if ( general_ops_panel != null ){
+			
+			general_ops_panel.refresh();
 		}
 	}
 
