@@ -1541,9 +1541,7 @@ RelatedContentUISWT
 				boolean	ok = false;
 				
 				if ( value != null && value.length() > 0 ){
-					
-					value = value.replaceAll( ",", "" ).trim();
-					
+										
 					String[] networks = new String[]{ AENetworkClassifier.AT_PUBLIC };
 					
 					String[] bits = value.split( ":", 2 );
@@ -1559,7 +1557,30 @@ RelatedContentUISWT
 							value = bits[1].trim();
 						}
 					}
-																	
+						
+					bits = value.split( " " );
+					
+					value = "";
+					
+					for (String bit: bits ){
+						bit = bit.trim();
+						if ( bit.length()==0){
+							continue;
+						}
+						
+						if ( bit.startsWith( "(" ) && bit.endsWith( ")" )){
+							
+								// regexpr, leave alone
+						}else{
+							
+								// not sure why this is here but it used to be so derp
+							
+							bit = bit.replaceAll( ",", "" ).trim();
+						}
+						
+						value += (value.isEmpty()?"":" ") + bit;
+					}
+
 					addSearch( value, networks, false );
 				}
 			}
