@@ -2671,8 +2671,15 @@ RelatedContentUISWT
 		public byte[]
 		getHash();
 		
+		public default void
+		search()
+		{
+			search( null );
+		}
+		
 		public void
-		search();
+		search( 
+			Runnable done );
 		
 		public boolean
 		isDestroyed();
@@ -2957,7 +2964,7 @@ RelatedContentUISWT
 		
 		@Override
 		public void
-		search()
+		search( Runnable done )
 		{
 			try{
 				lookupStarts();
@@ -3061,6 +3068,17 @@ RelatedContentUISWT
 							//System.out.println( "Total results=" + total_results + ", ignored=" + ignored_version );
 
 							lookupEnds();
+							
+							if ( done != null ){
+								
+								try{
+									done.run();
+									
+								}catch( Throwable e ){
+									
+									Debug.out( e );
+								}
+							}
 						}
 						
 						@Override
@@ -3804,7 +3822,7 @@ RelatedContentUISWT
 		
 		@Override
 		public void
-		search()
+		search( Runnable done )
 		{
 			try{
 				showIcon( spinner, null );
@@ -3927,6 +3945,17 @@ RelatedContentUISWT
 							}
 							
 							hideIcon( spinner );
+							
+							if ( done != null ){
+								
+								try{
+									done.run();
+									
+								}catch( Throwable e ){
+									
+									Debug.out( e );
+								}
+							}
 						}
 					}
 				}.start();

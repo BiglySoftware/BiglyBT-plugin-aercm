@@ -16,12 +16,15 @@ import com.biglybt.pif.disk.DiskManagerFileInfo;
 import com.biglybt.pif.download.Download;
 import com.biglybt.pif.torrent.Torrent;
 import com.biglybt.pifimpl.local.PluginCoreUtils;
+import com.biglybt.ui.common.viewtitleinfo.ViewTitleInfo;
+import com.biglybt.ui.common.viewtitleinfo.ViewTitleInfoManager;
 import com.biglybt.ui.swt.Utils;
 import com.biglybt.ui.swt.pif.UISWTView;
 
 import com.biglybt.core.content.RelatedContentManager;
 import com.biglybt.core.tag.Tag;
 import com.biglybt.ui.swt.imageloader.ImageLoader;
+import com.biglybt.ui.swt.mdi.BaseMdiEntry;
 import com.biglybt.ui.swt.skin.SWTSkin;
 import com.biglybt.ui.swt.skin.SWTSkinObject;
 import com.biglybt.ui.swt.skin.SWTSkinObjectListener;
@@ -29,7 +32,9 @@ import com.aelitis.plugins.rcmplugin.RelatedContentUISWT.RCMItemSubView;
 import com.aelitis.plugins.rcmplugin.RelatedContentUISWT.RCMItemSubViewEmpty;
 import com.aelitis.plugins.rcmplugin.RelatedContentUISWT.RCMItemSubViewListener;
 
-public class RCM_SubViewHolder
+public class 
+RCM_SubViewHolder
+	implements ViewTitleInfo
 {
 	private final RCMPlugin		plugin;
 	private final SWTSkin		skin;
@@ -45,15 +50,18 @@ public class RCM_SubViewHolder
 	private boolean				related_mode = true;
 
 	private ImageLabel			status_img_label;
-	private Label status_label;
-	private Button[]			buttons;
+	private Label 				status_label;
+	private Button 				button_more;
+	private Button[]			buttons_toggle;
 	
 	private boolean 			current_rm;
 	private Download			current_dl;
 	private DiskManagerFileInfo	current_file;
 	
+	private int					current_count;
+	
 	private Image[]			vitality_images;
-	private Image swarm_image;
+	private Image			 swarm_image;
 	
 	private boolean initialized;
 	private Composite parent;
@@ -68,6 +76,11 @@ public class RCM_SubViewHolder
 		plugin	= _plugin;
 		view 	= _view;
 		skin	= _skin;
+		
+		if ( view instanceof BaseMdiEntry ){
+			
+			((BaseMdiEntry)view).setViewTitleInfo( this );
+		}
 	}
 	
 	protected void
@@ -108,7 +121,8 @@ public class RCM_SubViewHolder
 		cMore.setLayout(new FillLayout());
 		GridData gridData = new GridData(SWT.RIGHT, SWT.FILL, true, false);
 		cMore.setLayoutData(gridData);
-		final Button button_more = new Button( cMore, SWT.PUSH  );
+		
+		button_more = new Button( cMore, SWT.PUSH  );
 		button_more.setText(MessageText.getString("rcm.menu.searchmore"));
 		button_more.addSelectionListener(new SelectionListener() {
 			
@@ -141,10 +155,10 @@ public class RCM_SubViewHolder
 		button_related.addListener( SWT.Selection, but_list );
 		button_size.addListener( SWT.Selection, but_list );
 		
-		buttons = new Button[]{ button_related, button_size };
+		buttons_toggle = new Button[]{ button_related, button_size };
 		
-		buttons[0].setEnabled( dl != null );
-		buttons[1].setEnabled( dl_file != null );
+		buttons_toggle[0].setEnabled( dl != null );
+		buttons_toggle[1].setEnabled( dl_file != null );
 				
 		
 		Composite skin_area = new Composite( parent, SWT.NULL );
@@ -280,30 +294,30 @@ public class RCM_SubViewHolder
 					run() 
 					{
 						boolean isSearch = search_strings != null;
-						if ( buttons != null ){
-  						buttons[0].setVisible(!isSearch);
-  						buttons[1].setVisible(!isSearch);
+						if ( buttons_toggle != null ){
+							buttons_toggle[0].setVisible(!isSearch);
+							buttons_toggle[1].setVisible(!isSearch);
 						}
 						if (status_label != null) {
-  						status_label.setText(isSearch ? Arrays.toString(search_strings) : "");
+							status_label.setText(isSearch ? Arrays.toString(search_strings) : "");
   						
-  						status_label.getParent().layout();
+							status_label.getParent().layout();
 						}
-						if ( buttons != null ){
+						if ( buttons_toggle != null ){
 							
 							if ( related_mode ){
 								
-								buttons[0].setSelection( true );
-								buttons[1].setSelection( false );
+								buttons_toggle[0].setSelection( true );
+								buttons_toggle[1].setSelection( false );
 								
 							}else{
 								
-								buttons[1].setSelection( true );
-								buttons[0].setSelection( false );
+								buttons_toggle[1].setSelection( true );
+								buttons_toggle[0].setSelection( false );
 							}
 							
-							buttons[0].setEnabled( dl != null );
-							buttons[1].setEnabled( dl_file != null );
+							buttons_toggle[0].setEnabled( dl != null );
+							buttons_toggle[1].setEnabled( dl_file != null );
 						}
 					}
 				});
@@ -329,6 +343,8 @@ public class RCM_SubViewHolder
 		current_rm 		= related_mode;
 		current_dl		= dl;
 		current_file	= dl_file;
+		
+		current_count	= 0;
 		
 		if ( current_data_source != null ){
 			
@@ -418,6 +434,11 @@ public class RCM_SubViewHolder
 											
 											status_img_label.setImage( vitality_images[vi_index++%vitality_images.length]);
 										}
+										
+										if ( button_more != null && !button_more.isDisposed()){
+											
+											button_more.setEnabled(false);
+										}
 									}
 								});
 						
@@ -445,6 +466,10 @@ public class RCM_SubViewHolder
 											
 											status_img_label.setImage( swarm_image );	
 										}
+										if ( button_more != null && !button_more.isDisposed()){
+											
+											button_more.setEnabled(true);
+										}
 									}
 								});
 					}
@@ -455,11 +480,10 @@ public class RCM_SubViewHolder
 							return;
 						}
 						lastCount = num;
-						String title = MessageText.getString("rcm.subview.torrentdetails.name");
-						if (num > 0) {
-							title += " (" + num + ")";
-						}
-						view.setTitle(title);
+						
+						current_count = num;
+						
+						ViewTitleInfoManager.refreshTitleInfo( RCM_SubViewHolder.this );
 					}
 				});
 			
@@ -488,6 +512,22 @@ public class RCM_SubViewHolder
 		}
 		
 		current_data_source = new_subview;
+	}
+	
+	@Override
+	public Object 
+	getTitleInfoProperty(
+		int propertyID)
+	{
+		if ( propertyID == ViewTitleInfo.TITLE_INDICATOR_TEXT ){
+			
+			if ( current_count > 0 ){
+				
+				return( String.valueOf( current_count ));
+			}
+		}
+		
+		return( null );
 	}
 	
 	protected void

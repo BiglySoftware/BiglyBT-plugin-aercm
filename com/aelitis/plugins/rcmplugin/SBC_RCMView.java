@@ -345,6 +345,7 @@ SBC_RCMView
 			lblMinSeeds.setText(MessageText.getString("rcmview.filter.minSeeds"));
 			Spinner spinMinSeeds = new Spinner(cMinSeeds, SWT.BORDER);
 			spinMinSeeds.setMinimum(0);
+			spinMinSeeds.setMaximum(Integer.MAX_VALUE);
 			spinMinSeeds.setSelection(minSeeds);
 			spinMinSeeds.addListener(SWT.Selection, new Listener() {
 				@Override
