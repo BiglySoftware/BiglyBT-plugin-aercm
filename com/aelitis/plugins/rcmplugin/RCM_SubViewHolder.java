@@ -4,43 +4,49 @@ import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.*;
+import org.eclipse.swt.events.PaintEvent;
+import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
-import org.eclipse.swt.layout.*;
+import org.eclipse.swt.layout.FillLayout;
+import org.eclipse.swt.layout.FormLayout;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.*;
-import com.biglybt.core.internat.MessageText;
-import com.biglybt.core.util.AENetworkClassifier;
-import com.biglybt.pif.disk.DiskManagerFileInfo;
-import com.biglybt.pif.download.Download;
-import com.biglybt.pif.torrent.Torrent;
-import com.biglybt.pifimpl.local.PluginCoreUtils;
-import com.biglybt.ui.common.viewtitleinfo.ViewTitleInfo;
-import com.biglybt.ui.common.viewtitleinfo.ViewTitleInfoManager;
-import com.biglybt.ui.swt.Utils;
-import com.biglybt.ui.swt.pif.UISWTView;
 
-import com.biglybt.core.content.RelatedContentManager;
-import com.biglybt.core.tag.Tag;
-import com.biglybt.ui.swt.imageloader.ImageLoader;
-import com.biglybt.ui.swt.mdi.BaseMdiEntry;
-import com.biglybt.ui.swt.skin.SWTSkin;
-import com.biglybt.ui.swt.skin.SWTSkinObject;
-import com.biglybt.ui.swt.skin.SWTSkinObjectListener;
 import com.aelitis.plugins.rcmplugin.RelatedContentUISWT.RCMItemSubView;
 import com.aelitis.plugins.rcmplugin.RelatedContentUISWT.RCMItemSubViewEmpty;
 import com.aelitis.plugins.rcmplugin.RelatedContentUISWT.RCMItemSubViewListener;
+import com.biglybt.core.content.RelatedContentManager;
+import com.biglybt.core.internat.MessageText;
+import com.biglybt.core.tag.Tag;
+import com.biglybt.core.util.AENetworkClassifier;
+import com.biglybt.pifimpl.local.PluginCoreUtils;
+import com.biglybt.ui.common.viewtitleinfo.ViewTitleInfo;
+import com.biglybt.ui.common.viewtitleinfo.ViewTitleInfoManager;
+import com.biglybt.ui.mdi.MdiEntry;
+import com.biglybt.ui.mdi.MdiEntryVitalityImage;
+import com.biglybt.ui.swt.Utils;
+import com.biglybt.ui.swt.imageloader.ImageLoader;
+import com.biglybt.ui.swt.pif.UISWTView;
+import com.biglybt.ui.swt.skin.SWTSkin;
+import com.biglybt.ui.swt.skin.SWTSkinObject;
+import com.biglybt.ui.swt.skin.SWTSkinObjectListener;
 
-public class 
-RCM_SubViewHolder
+import com.biglybt.pif.disk.DiskManagerFileInfo;
+import com.biglybt.pif.download.Download;
+import com.biglybt.pif.torrent.Torrent;
+
+public class RCM_SubViewHolder
 	implements ViewTitleInfo
 {
 	private final RCMPlugin		plugin;
 	private final SWTSkin		skin;
 	private final UISWTView 	view;
+	private MdiEntryVitalityImage spinnerVitality;
 
-	
+
 	private RCMItemSubView		current_data_source;
 	
 	private Download			dl 		= null;
@@ -76,10 +82,9 @@ RCM_SubViewHolder
 		plugin	= _plugin;
 		view 	= _view;
 		skin	= _skin;
-		
-		if ( view instanceof BaseMdiEntry ){
-			
-			((BaseMdiEntry)view).setViewTitleInfo( this );
+		if (view instanceof MdiEntry) {
+			spinnerVitality = ((MdiEntry) view).addVitalityImage(RelatedContentUISWT.SPINNER_IMAGE_ID);
+			spinnerVitality.setVisible(false);
 		}
 	}
 	
@@ -121,20 +126,25 @@ RCM_SubViewHolder
 		cMore.setLayout(new FillLayout());
 		GridData gridData = new GridData(SWT.RIGHT, SWT.FILL, true, false);
 		cMore.setLayoutData(gridData);
-		
-		button_more = new Button( cMore, SWT.PUSH  );
+
+		button_more = new Button( cMore, SWT.TOGGLE  );
 		button_more.setText(MessageText.getString("rcm.menu.searchmore"));
-		button_more.addSelectionListener(new SelectionListener() {
-			
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				if (current_data_source != null) {
-					current_data_source.search();
-				}
+		button_more.addListener(SWT.Selection, e -> {
+			if (current_data_source == null) {
+				return;
 			}
-			
-			@Override
-			public void widgetDefaultSelected(SelectionEvent e) {
+			Button btn = (Button) e.widget;
+			if (current_data_source.isSearching()) {
+				if (current_data_source.isKeepLookingUp()) {
+					current_data_source.keepLookingUp(false);
+					btn.setSelection(false);
+				} else {
+					current_data_source.keepLookingUp(true);
+					btn.setSelection(true);
+				}
+			} else {
+				current_data_source.search();
+				btn.setSelection(false);
 			}
 		});
 
@@ -407,11 +417,8 @@ RCM_SubViewHolder
 		
 		if ( !( new_subview instanceof RCMItemSubViewEmpty )){
 			
-			new_subview.setListener(
-				new RCMItemSubViewListener()
-				{
+			new_subview.setListener(new RCMItemSubViewListener() {
 					private int vi_index;
-					private int lastCount = -1;
 					
 					@Override
 					public boolean
@@ -422,25 +429,20 @@ RCM_SubViewHolder
 							
 							return( false );
 						}
-						
-						Utils.execSWTThread(
-								new Runnable()
-								{
-									@Override
-									public void
-									run() 
-									{
-										if ( status_img_label != null && !status_img_label.isDisposed() && vitality_images.length > 0){
-											
-											status_img_label.setImage( vitality_images[vi_index++%vitality_images.length]);
-										}
-										
-										if ( button_more != null && !button_more.isDisposed()){
-											
-											button_more.setEnabled(false);
-										}
-									}
-								});
+
+					if (spinnerVitality != null) {
+						spinnerVitality.setVisible(true);
+					}
+
+					Utils.execSWTThread(() -> {
+						current_data_source.keepLookingUp(button_more.getSelection());
+
+						if (status_img_label != null && !status_img_label.isDisposed()
+								&& vitality_images.length > 0) {
+							status_img_label.setImage(
+									vitality_images[vi_index++ % vitality_images.length]);
+						}
+					});
 						
 						return( true );
 					}
@@ -454,32 +456,23 @@ RCM_SubViewHolder
 															
 							return;
 						}
-						
-						Utils.execSWTThread(
-								new Runnable()
-								{
-									@Override
-									public void
-									run() 
-									{
-										if ( status_img_label != null && !status_img_label.isDisposed()){
-											
-											status_img_label.setImage( swarm_image );	
-										}
-										if ( button_more != null && !button_more.isDisposed()){
-											
-											button_more.setEnabled(true);
-										}
-									}
-								});
+
+					if (spinnerVitality != null) {
+						spinnerVitality.setVisible(false);
 					}
+
+					Utils.execSWTThread(() -> {
+						if (status_img_label != null && !status_img_label.isDisposed()) {
+							status_img_label.setImage(swarm_image);
+						}
+					});
+				}
 
 					@Override
 					public void updateCount(int num) {
-						if (num == lastCount) {
+						if (num == current_count) {
 							return;
 						}
-						lastCount = num;
 						
 						current_count = num;
 						
