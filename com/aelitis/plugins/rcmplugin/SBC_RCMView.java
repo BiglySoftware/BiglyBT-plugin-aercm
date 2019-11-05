@@ -1821,7 +1821,7 @@ SBC_RCMView
 		list.put("remove", tv_related_content.getSelectedDataSources().size() > 0 ? UIToolBarItem.STATE_ENABLED : 0);
 	}
 
-	private void launchURL(String s) {
+	public static void launchURL(String s) {
 		Program program = Program.findProgram(".html");
 		if (program != null && program.getName().contains("Chrome")) {
 			try {
@@ -1964,7 +1964,7 @@ SBC_RCMView
 
 			manager.addListener(current_rcm_listener);
 
-			Object data_source = mdi_entry == null ? ds : mdi_entry.getDatasource();
+			Object data_source = mdi_entry == null ? ds : mdi_entry.getDataSource();
 
 			if (data_source instanceof RelatedContentEnumerator) {
 

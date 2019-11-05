@@ -128,7 +128,7 @@ RelatedContentUISWT
 	
 	private PluginInterface		plugin_interface;
 	private UISWTInstance		swt_ui;
-	private RCMPlugin			plugin;
+	private static RCMPlugin			plugin;
 	
 	private BasicPluginConfigModel 	config_model;
 	private BooleanParameter 		enable_ui;
@@ -142,7 +142,7 @@ RelatedContentUISWT
 	private boolean			root_menus_added;
 	private MenuItem		root_menu;
 	
-	private Image			swarm_image;
+	protected static Image			swarm_image;
 	
 	private MdiEntryCreationListener mdi_creation_listener;
 	
@@ -152,7 +152,7 @@ RelatedContentUISWT
 	
 	private AsyncDispatcher	async_dispatcher = new AsyncDispatcher();
 	
-	private HashMap<UISWTView,RCM_SubViewHolder> rcm_subviews = new HashMap<UISWTView,RCM_SubViewHolder>();
+	protected static HashMap<UISWTView,RCM_SubViewHolder> rcm_subviews = new HashMap<>();
 
 	private String	last_search_expr = "";
 	
@@ -272,7 +272,7 @@ RelatedContentUISWT
 							
 							if ( mdi_entry != null ){
 								
-								mdi_entry.close( true );
+								mdi_entry.closeView();
 							}
 							
 							if ( mdi_creation_listener != null ){
@@ -647,7 +647,7 @@ RelatedContentUISWT
 			hookMenus(true);
 			hookSubViews(true);
 		} else {
-			mdi.closeEntry(SIDEBAR_SECTION_RELATED_CONTENT);
+			mdi.closeEntryByID(SIDEBAR_SECTION_RELATED_CONTENT);
 			hookMenus(false);
 			hookSubViews(false);
 		}
@@ -659,103 +659,24 @@ RelatedContentUISWT
 	hookSubViews(
 		boolean	enable )
 	{
-		String[] views = {
-			TableManager.TABLE_MYTORRENTS_ALL_BIG,
-			TableManager.TABLE_MYTORRENTS_INCOMPLETE,
-			TableManager.TABLE_MYTORRENTS_INCOMPLETE_BIG,
-			TableManager.TABLE_MYTORRENTS_COMPLETE,
-			"TagsView"
+		Class[] dataSourceTypes = {
+				Download.class,
+				Tag.class,
 		};
 		
 		if ( enable ){
 				
-			UISWTViewEventListener listener = 
-				new UISWTViewEventListener()
-				{	
-					@Override
-					public boolean
-					eventOccurred(
-						UISWTViewEvent event ) 
-					{
-						UISWTView 	currentView = event.getView();
-						
-						switch (event.getType()) {
-							case UISWTViewEvent.TYPE_CREATE:{
-								
-								SWTSkin skin = SWTSkinFactory.getNonPersistentInstance(
-										getClass().getClassLoader(),
-										"com/aelitis/plugins/rcmplugin/skins",
-										"skin3_rcm.properties" );
-								
-								rcm_subviews.put(currentView, new RCM_SubViewHolder( plugin, currentView, skin ));
-
-								event.getView().setDestroyOnDeactivate(false);
-
-								break;
-							}
-							case UISWTViewEvent.TYPE_INITIALIZE:{
-							
-								RCM_SubViewHolder subview = rcm_subviews.get(currentView);
-								
-								if ( subview != null ){
-									
-									subview.initialise((Composite)event.getData(), swarm_image);
-								}
-		
-								break;
-							}
-							case UISWTViewEvent.TYPE_DATASOURCE_CHANGED:{
-								
-								RCM_SubViewHolder subview = rcm_subviews.get(currentView);
-								
-								if ( subview != null ){
-									
-									subview.setDataSource( event.getData());
-								}
-								
-								break;
-							}
-
-							case UISWTViewEvent.TYPE_FOCUSLOST: {
-								break;
-							}
-
-							case UISWTViewEvent.TYPE_FOCUSGAINED: {
-								RCM_SubViewHolder subview = rcm_subviews.get(currentView);
-								
-								if ( subview != null ){
-									
-									subview.focusGained();
-								}
-								
-								break;
-							}
-							
-							case UISWTViewEvent.TYPE_DESTROY:{
-								
-								RCM_SubViewHolder subview = rcm_subviews.remove(currentView);
-							
-								if ( subview != null ){
-									
-									subview.destroy();
-								}
-								
-								break;
-							}
-						}
-						return true;
-					}
-				};
+			for ( Class forType: dataSourceTypes ){
 				
-			for ( String table_id: views ){
-				
-				swt_ui.addView(table_id, "rcm.subview.torrentdetails.name",	listener );
+				swt_ui.registerView(forType,
+						swt_ui.createViewBuilder("rcm.subview.torrentdetails.name",
+								RCM_SubViewEventListener.class));
 			}
 		}else{
 			
-			for ( String table_id: views ){
+			for ( Class forType: dataSourceTypes ){
 				
-				swt_ui.removeViews( table_id, "rcm.subview.torrentdetails.name" );
+				swt_ui.unregisterView( forType, "rcm.subview.torrentdetails.name" );
 			}
 			
 			for ( UISWTView entry: new ArrayList<UISWTView>(rcm_subviews.keySet())){
@@ -2084,7 +2005,7 @@ RelatedContentUISWT
 
 																	if ( existing_si != null ){
 																		
-																		existing_si.getMdiEntry().close( true );
+																		existing_si.getMdiEntry().closeView();
 																	}
 																	
 																	rcm_item_map.put( new_dummy_hash, new_si );
@@ -2783,7 +2704,8 @@ RelatedContentUISWT
 		
 		private AsyncDispatcher	async_dispatcher = new AsyncDispatcher();
 
-		
+		private boolean keepLookingUp;
+
 		protected
 		RCMItemContent(
 			RCMPlugin	_plugin,	
@@ -3532,6 +3454,10 @@ RelatedContentUISWT
 					hideIcon( spinner );
 				}
 			}
+
+			if (keepLookingUp && !isDestroyed()) {
+				search();
+			}
 		}
 		
 		@Override
@@ -3569,7 +3495,7 @@ RelatedContentUISWT
 			
 			if ( mdi != null && sb_entry != null ){
 				
-				mdi.showEntryByID(sb_entry.getId());
+				mdi.showEntryByID(sb_entry.getViewID());
 			}
 		}
 		
@@ -3589,6 +3515,10 @@ RelatedContentUISWT
 				}
 			}
 		}
+
+		public void keepLookingUp(boolean keepLookingUp) {
+			this.keepLookingUp = keepLookingUp;
+		}
 	}
 	
 	public static class
@@ -3598,7 +3528,8 @@ RelatedContentUISWT
 		private RCMItemSubViewListener		listener;
 		private TimerEventPeriodic			update_event;
 		private boolean						complete;
-		
+		private boolean keepLookingUp;
+
 		protected
 		RCMItemSubView(
 			RCMPlugin	_plugin,
@@ -3709,12 +3640,28 @@ RelatedContentUISWT
 					listener.complete();
 				}
 			}
+
+			if (keepLookingUp && !isDestroyed()) {
+				search();
+			}
 		}
 
 		public void setCount(int size) {
 			if (listener != null) {
 				listener.updateCount(size);
 			}
+		}
+
+		public void keepLookingUp(boolean keepLookingUp) {
+			this.keepLookingUp = keepLookingUp;
+		}
+
+		public boolean isKeepLookingUp() {
+			return keepLookingUp;
+		}
+		
+		public boolean isSearching() {
+			return update_event != null;
 		}
 	}
 
@@ -4160,7 +4107,7 @@ RelatedContentUISWT
 			
 			if ( mdi != null && sb_entry != null ){
 				
-				mdi.showEntryByID(sb_entry.getId());
+				mdi.showEntryByID(sb_entry.getViewID());
 			}
 		}
 		
