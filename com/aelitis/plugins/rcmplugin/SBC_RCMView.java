@@ -1556,12 +1556,12 @@ SBC_RCMView
 					
 					addMenus( menu, new RelatedContent[]{ rc });
 					
-					mi.addSelectionListener(
-						SelectionListener.widgetSelectedAdapter(
-							(e)->{
-								
-								TorrentOpener.openTorrent( RCMPlugin.getMagnetURI( rc ));
-							}));
+					mi.addListener(
+						SWT.Selection,
+						(e)->{
+							
+							TorrentOpener.openTorrent( RCMPlugin.getMagnetURI( rc ));
+						});
 						
 				}else if ( ev.getType() == NodeEvent.ET_CLICKED ){
 					
@@ -1821,7 +1821,7 @@ SBC_RCMView
 		list.put("remove", tv_related_content.getSelectedDataSources().size() > 0 ? UIToolBarItem.STATE_ENABLED : 0);
 	}
 
-	public static void launchURL(String s) {
+	private void launchURL(String s) {
 		Program program = Program.findProgram(".html");
 		if (program != null && program.getName().contains("Chrome")) {
 			try {
@@ -1964,7 +1964,7 @@ SBC_RCMView
 
 			manager.addListener(current_rcm_listener);
 
-			Object data_source = mdi_entry == null ? ds : mdi_entry.getDataSource();
+			Object data_source = mdi_entry == null ? ds : mdi_entry.getDatasource();
 
 			if (data_source instanceof RelatedContentEnumerator) {
 
