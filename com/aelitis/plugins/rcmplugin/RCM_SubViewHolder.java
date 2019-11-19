@@ -9,10 +9,7 @@ import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
-import org.eclipse.swt.layout.FillLayout;
-import org.eclipse.swt.layout.FormLayout;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.layout.*;
 import org.eclipse.swt.widgets.*;
 
 import com.aelitis.plugins.rcmplugin.RelatedContentUISWT.RCMItemSubView;
@@ -41,6 +38,7 @@ import com.biglybt.pif.torrent.Torrent;
 public class RCM_SubViewHolder
 	implements ViewTitleInfo
 {
+	private static final boolean TUX_CONTINUOUS_SEARCH = false;
 	private final RCMPlugin		plugin;
 	private final SWTSkin		skin;
 	private final UISWTView 	view;
@@ -127,10 +125,15 @@ public class RCM_SubViewHolder
 		GridData gridData = new GridData(SWT.RIGHT, SWT.FILL, true, false);
 		cMore.setLayoutData(gridData);
 
-		button_more = new Button( cMore, SWT.TOGGLE  );
+		button_more = new Button(cMore,
+				TUX_CONTINUOUS_SEARCH ? SWT.TOGGLE : SWT.PUSH);
 		button_more.setText(MessageText.getString("rcm.menu.searchmore"));
 		button_more.addListener(SWT.Selection, e -> {
 			if (current_data_source == null) {
+				return;
+			}
+			if (!TUX_CONTINUOUS_SEARCH) {
+				current_data_source.search();
 				return;
 			}
 			Button btn = (Button) e.widget;
@@ -435,7 +438,13 @@ public class RCM_SubViewHolder
 					}
 
 					Utils.execSWTThread(() -> {
-						current_data_source.keepLookingUp(button_more.getSelection());
+						if (TUX_CONTINUOUS_SEARCH) {
+							current_data_source.keepLookingUp(button_more.getSelection());
+						} else {
+							if ( button_more != null && !button_more.isDisposed()){
+								button_more.setEnabled(false);
+							}
+						}
 
 						if (status_img_label != null && !status_img_label.isDisposed()
 								&& vitality_images.length > 0) {
@@ -464,6 +473,10 @@ public class RCM_SubViewHolder
 					Utils.execSWTThread(() -> {
 						if (status_img_label != null && !status_img_label.isDisposed()) {
 							status_img_label.setImage(swarm_image);
+						}
+						if (!TUX_CONTINUOUS_SEARCH && button_more != null
+								&& !button_more.isDisposed()) {
+							button_more.setEnabled(true);
 						}
 					});
 				}
