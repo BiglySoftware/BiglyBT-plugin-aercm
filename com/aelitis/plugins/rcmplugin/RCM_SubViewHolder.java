@@ -204,9 +204,16 @@ public class RCM_SubViewHolder
 		skin.layout();
 		
 	}
-	
+
 	protected void
 	setDataSource(
+		Object		obj )
+	{
+		Utils.execSWTThread(()->{ swt_setDataSource( obj );});
+	}
+	
+	protected void
+	swt_setDataSource(
 		Object		obj )
 	{
 		if (parent == null || !parent.isVisible()) {
