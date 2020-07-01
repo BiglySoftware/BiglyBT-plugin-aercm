@@ -480,6 +480,23 @@ RelatedContentUISWT
 						}
 					});
 
+			
+			BooleanParameter filter_active_only = 
+					config_model.addBooleanParameter2( 
+						"rcm.filter.active.only", "rcm.filter.active.only",
+						false );
+
+			filter_active_only.addListener(new ParameterListener() {
+					@Override
+					public void parameterChanged(Parameter param) {
+						manager.setFilterActiveOnly( filter_active_only.getValue());
+					}
+				});
+			
+			filter_active_only.setValue( manager.getFilterActiveOnly());
+			
+			config_model.createGroup( "rcm.filter.group", max_results, max_level, filter_active_only );
+
 			enable_search = 
 				config_model.addBooleanParameter2( 
 					"rcm.search.enable", "rcm.search.enable",
@@ -497,6 +514,8 @@ RelatedContentUISWT
 					"rcm.search.min_rank", "rcm.search.min_rank", RCMPlugin.MIN_SEARCH_RANK_DEFAULT );
 
 			enable_search.addEnabledOnSelection( sr_min_rank );
+			
+			config_model.createGroup( "rcm.search.group", enable_search, sr_min_rank );
 			
 				// overall enable
 			
