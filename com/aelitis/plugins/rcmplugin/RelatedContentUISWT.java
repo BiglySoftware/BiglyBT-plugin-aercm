@@ -139,14 +139,14 @@ RelatedContentUISWT
 	
 	private boolean			ui_setup;
 	
-	private boolean			root_menus_added;
-	private MenuItem		root_menu;
+	private boolean			mdi_menus_added;
 	
 	protected static Image			swarm_image;
 	
 	private MdiEntryCreationListener mdi_creation_listener;
 	
-	private List<MenuItem>	torrent_menus = new ArrayList<MenuItem>();
+	private List<MenuItem>	torrent_menus 	= new ArrayList<MenuItem>();
+	private List<MenuItem>	mdi_menus 		= new ArrayList<MenuItem>();
 		
 	private ByteArrayHashMap<RCMItem>	rcm_item_map = new ByteArrayHashMap<RCMItem>();
 	
@@ -254,13 +254,16 @@ RelatedContentUISWT
 						Debug.out( e );
 					}
 					
-					if ( root_menu != null ){
+					try{
+						for ( MenuItem menu: mdi_menus ){
+							
+							menu.remove();
+						}
+					}catch( Throwable e ){
 						
-						root_menu.remove();
-						
-						root_menu = null;
+						Debug.out( e );
 					}
-					
+										
 					hookSubViews( false );
 					
 					try{
@@ -714,156 +717,151 @@ RelatedContentUISWT
 		if ( enable && torrent_menus.size() > 0 ) {
 			return;
 		}
-		
+
 		if ( !enable ){
-			
+
 			if ( torrent_menus.size() > 0 ){
-				
+
 				for (MenuItem menuitem : torrent_menus) {
 					menuitem.remove();
 				}
-				
+
 				torrent_menus.clear();
 			}
 			return;
 		}
 
-		MenuManager mm = plugin_interface.getUIManager().getMenuManager();
-		
-		MenuItem mi_searchtag = mm.addMenuItem(MenuManager.MENU_TAG_CONTEXT, "rcm.contextmenu.searchtag");
-		mi_searchtag.setDisposeWithUIDetach(UIInstance.UIT_SWT);
-		torrent_menus.add( mi_searchtag );
-
-		mi_searchtag.setGraphic(menu_icon);
-		mi_searchtag.addFillListener(new MenuItemFillListener() {
-			@Override
-			public void menuWillBeShown(MenuItem menu, Object target) {
-				boolean enable = false;
-				if (target instanceof Tag[]) {
-					Tag[] tags = (Tag[]) target;
-
-					for (Tag tag : tags) {
-						if (tag.getTagType().getTagType() == TagType.TT_DOWNLOAD_MANUAL) {
-							enable = true;
-							break;
+		try{
+			MenuManager mm = plugin_interface.getUIManager().getMenuManager();
+	
+			MenuItem mi_searchtag = mm.addMenuItem(MenuManager.MENU_TAG_CONTEXT, "rcm.contextmenu.searchtag");
+			torrent_menus.add( mi_searchtag );
+	
+			mi_searchtag.setGraphic(menu_icon);
+			mi_searchtag.addFillListener(new MenuItemFillListener() {
+				@Override
+				public void menuWillBeShown(MenuItem menu, Object target) {
+					boolean enable = false;
+					if (target instanceof Tag[]) {
+						Tag[] tags = (Tag[]) target;
+	
+						for (Tag tag : tags) {
+							if (tag.getTagType().getTagType() == TagType.TT_DOWNLOAD_MANUAL) {
+								enable = true;
+								break;
+							}
 						}
 					}
+					menu.setVisible(enable);
 				}
-				menu.setVisible(enable);
-			}
-		});
-		mi_searchtag.addMultiListener(new MenuItemListener() {
-			@Override
-			public void selected(MenuItem menu, Object target) {
-				if (!(target instanceof Tag[])) {
-					return;
+			});
+			mi_searchtag.addMultiListener(new MenuItemListener() {
+				@Override
+				public void selected(MenuItem menu, Object target) {
+					if (!(target instanceof Tag[])) {
+						return;
+					}
+					Tag[] tags = (Tag[]) target;
+	
+					String[] networks = AENetworkClassifier.getDefaultNetworks();
+	
+					for (Tag tag : tags) {
+						addSearch("tag:" + tag.getTagName(true), networks, false);
+					}
 				}
-				Tag[] tags = (Tag[]) target;
-
-				String[] networks = AENetworkClassifier.getDefaultNetworks();
-
-				for (Tag tag : tags) {
-					addSearch("tag:" + tag.getTagName(true), networks, false);
-				}
-			}
-		});
-		
-
-				
+			});
+	
+	
 			MenuItem mi_rel = mm.addMenuItem(MenuManager.MENU_DOWNLOAD_CONTEXT, "rcm.contextmenu.lookupassoc");
-			mi_rel.setDisposeWithUIDetach(UIInstance.UIT_SWT);
-
 			torrent_menus.add( mi_rel );
-			
+	
 			mi_rel.setStyle( TableContextMenuItem.STYLE_PUSH );
 			mi_rel.setHeaderCategory(MenuItem.HEADER_SOCIAL);
 			mi_rel.setGraphic( menu_icon );
-			
+	
 			MenuItemListener listener = 
-				new MenuItemListener()
-				{
-					@Override
-					public void
-					selected(
+					new MenuItemListener()
+			{
+				@Override
+				public void
+				selected(
 						MenuItem 	menu, 
 						Object 		target) 
-					{
-						if (!(target instanceof Download[])) {
-							return;
-						}
-						Download[]	rows = (Download[])target;
-						
-						for ( Download download: rows ){
-							
-							explicitSearch( download );
-						}
+				{
+					if (!(target instanceof Download[])) {
+						return;
 					}
-				};
-				
+					
+					Download[]	rows = (Download[])target;
+	
+					for ( Download download: rows ){
+	
+						explicitSearch( download );
+					}
+				}
+			};
+	
 			mi_rel.addMultiListener( listener );
-						
-			MenuItem mi_size = mm.addMenuItem(MenuManager.MENU_DOWNLOAD_CONTEXT, "rcm.contextmenu.lookupsize");
-			mi_size.setDisposeWithUIDetach(UIInstance.UIT_SWT);
-
-			
+	
+			MenuItem mi_size = mm.addMenuItem(MenuManager.MENU_DOWNLOAD_CONTEXT, "rcm.contextmenu.lookupsize");			
 			torrent_menus.add( mi_size );
-			
+	
 			mi_size.setStyle( TableContextMenuItem.STYLE_PUSH );
 			mi_size.setHeaderCategory(MenuItem.HEADER_SOCIAL);
 			mi_size.setGraphic( menu_icon );
-				
+	
 			mi_size.addFillListener(
 				new MenuItemFillListener()
 				{
 					@Override
 					public void
 					menuWillBeShown(
-						MenuItem 	menu, 
-						Object 		data )
+							MenuItem 	menu, 
+							Object 		data )
 					{
 						Download[]	rows = (Download[])data;
-						
+
 						int	num_ok = 0;
-						
+
 						for ( Download dl: rows ){
-							
+
 							if ( dl.getDiskManagerFileCount() == 1 ){
-							
+
 								if ( dl.getDiskManagerFileInfo(0).getLength() >= RelatedContentManager.FILE_ASSOC_MIN_SIZE ){
-								
+
 									num_ok++;
 								}
 							}
 						}
-						
+
 						menu.setVisible( num_ok > 0 );
 					}
 				});
-			
+	
 			mi_size.addMultiListener( 
 				new MenuItemListener()
 				{
 					@Override
 					public void
 					selected(
-						MenuItem 	menu, 
-						Object 		target) 
+							MenuItem 	menu, 
+							Object 		target) 
 					{
 						Download[]	rows = (Download[])target;
-						
+
 						for ( Download dl: rows ){
-							
+
 							String[] networks = PluginCoreUtils.unwrap( dl ).getDownloadState().getNetworks();
-							
+
 							if ( networks == null || networks.length == 0 ){
-								
+
 								networks = new String[]{ AENetworkClassifier.AT_PUBLIC };
 							}
-							
+
 							if ( dl.getDiskManagerFileCount() == 1 ){
-								
+
 								long len = dl.getDiskManagerFileInfo(0).getLength();
-								
+
 								if ( len >= RelatedContentManager.FILE_ASSOC_MIN_SIZE ){
 
 									explicitSearch( len, networks );
@@ -872,87 +870,93 @@ RelatedContentUISWT
 						}
 					}
 				});
-		
-		TableManager	table_manager = plugin_interface.getUIManager().getTableManager();
+	
+			TableManager	table_manager = plugin_interface.getUIManager().getTableManager();
+	
+			String[]	file_table_ids = {
+					TableManager.TABLE_TORRENT_FILES,
+			};
+	
+			for (int i = 0; i < file_table_ids.length; i++){ 
+	
+				String table_id = file_table_ids[i];
+	
+				TableContextMenuItem mi = table_manager.addContextMenuItem( table_id, "rcm.contextmenu.lookupsize");
+				torrent_menus.add( mi );
+	
+				mi.setStyle( TableContextMenuItem.STYLE_PUSH );
+				mi.setHeaderCategory(MenuItem.HEADER_SOCIAL);
+				mi.setGraphic( menu_icon );
+	
+				mi.addFillListener(
+					new MenuItemFillListener()
+					{
+						@Override
+						public void
+						menuWillBeShown(
+								MenuItem 	menu, 
+								Object 		data )
+						{
+							TableRow[]	rows = (TableRow[])data;
 
-		String[]	file_table_ids = {
-				TableManager.TABLE_TORRENT_FILES,
-		};
+							int	num_ok = 0;
+
+							for ( TableRow row: rows ){
+
+								DiskManagerFileInfo file = (DiskManagerFileInfo)row.getDataSource();
+
+								if ( file.getLength() >= RelatedContentManager.FILE_ASSOC_MIN_SIZE ){
+
+									num_ok++;
+								}
+							}
+
+							menu.setEnabled( num_ok > 0 );
+						}
+					});
+	
+				mi.addMultiListener( 
+					new MenuItemListener()
+					{
+						@Override
+						public void
+						selected(
+								MenuItem 	menu, 
+								Object 		target) 
+						{
+							TableRow[]	rows = (TableRow[])target;
+
+							for ( TableRow row: rows ){
+
+								DiskManagerFileInfo file = (DiskManagerFileInfo)row.getDataSource();
+
+								if ( file.getLength() >= RelatedContentManager.FILE_ASSOC_MIN_SIZE ){
+
+									String[] networks = null;
+
+									try{
+										networks = PluginCoreUtils.unwrap( file.getDownload()).getDownloadState().getNetworks();
+
+									}catch( Throwable e ){
+									}
+
+									if ( networks == null || networks.length == 0 ){
+
+										networks = new String[]{ AENetworkClassifier.AT_PUBLIC };
+									}
+
+									explicitSearch( file.getLength(), networks );
+								}
+							}
+						}
+					});
+			}
+		}finally{
+			
+			for ( MenuItem mi: torrent_menus ){
 				
-		for (int i = 0; i < file_table_ids.length; i++){ 
-			
-			String table_id = file_table_ids[i];
-			
-			TableContextMenuItem mi = table_manager.addContextMenuItem( table_id, "rcm.contextmenu.lookupsize");
-			mi.setDisposeWithUIDetach(UIInstance.UIT_SWT);
-			torrent_menus.add( mi );
-			
-			mi.setStyle( TableContextMenuItem.STYLE_PUSH );
-			mi.setHeaderCategory(MenuItem.HEADER_SOCIAL);
-			mi.setGraphic( menu_icon );
-			
-			mi.addFillListener(
-				new MenuItemFillListener()
-				{
-					@Override
-					public void
-					menuWillBeShown(
-						MenuItem 	menu, 
-						Object 		data )
-					{
-						TableRow[]	rows = (TableRow[])data;
-						
-						int	num_ok = 0;
-						
-						for ( TableRow row: rows ){
-							
-							DiskManagerFileInfo file = (DiskManagerFileInfo)row.getDataSource();
-							
-							if ( file.getLength() >= RelatedContentManager.FILE_ASSOC_MIN_SIZE ){
-								
-								num_ok++;
-							}
-						}
-						
-						menu.setEnabled( num_ok > 0 );
-					}
-				});
-			
-			mi.addMultiListener( 
-				new MenuItemListener()
-				{
-					@Override
-					public void
-					selected(
-						MenuItem 	menu, 
-						Object 		target) 
-					{
-						TableRow[]	rows = (TableRow[])target;
-						
-						for ( TableRow row: rows ){
-							
-							DiskManagerFileInfo file = (DiskManagerFileInfo)row.getDataSource();
-							
-							if ( file.getLength() >= RelatedContentManager.FILE_ASSOC_MIN_SIZE ){
-							
-								String[] networks = null;
-								
-								try{
-									networks = PluginCoreUtils.unwrap( file.getDownload()).getDownloadState().getNetworks();
-									
-								}catch( Throwable e ){
-								}
-								
-								if ( networks == null || networks.length == 0 ){
-									
-									networks = new String[]{ AENetworkClassifier.AT_PUBLIC };
-								}
-								
-								explicitSearch( file.getLength(), networks );
-							}
-						}
-					}
-				});
+				mi.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+			}
 		}
 	}
 	
@@ -975,8 +979,6 @@ RelatedContentUISWT
 	buildSideBar(
 		final MainViewInfo main_view_info )
 	{		
-		final String parent_id = "sidebar." + SIDEBAR_SECTION_RELATED_CONTENT;
-
 		final MultipleDocumentInterface mdi = UIFunctionsManager.getUIFunctions().getMDI();
 		
 		final RelatedContentManager f_manager = manager;
@@ -1031,7 +1033,7 @@ RelatedContentUISWT
 		
 		mdi.registerEntry( SIDEBAR_SECTION_RELATED_CONTENT, mdi_creation_listener );
 				
-		addMdiMenus(parent_id);
+		addMdiMenus();
 		
 		rcm_listener = 
 			new RelatedContentManagerListener()
@@ -1124,11 +1126,19 @@ RelatedContentUISWT
 			f_manager.addListener( rcm_listener );
 	}
 	
-	private void addMdiMenus(String parent_id) {
-		if ( !root_menus_added ){
+	private void 
+	addMdiMenus() 
+	{
+		if ( mdi_menus_added ){
 			
-			root_menus_added = true;
+			return;
+		}
+		
+		try{
+			mdi_menus_added = true;
 			
+			String parent_id = "sidebar." + SIDEBAR_SECTION_RELATED_CONTENT;
+
 			UIManager			ui_manager = plugin_interface.getUIManager();
 
 			MenuManager menu_manager = ui_manager.getMenuManager();
@@ -1136,9 +1146,7 @@ RelatedContentUISWT
 			MenuItem menu_item;
 			
 			menu_item = menu_manager.addMenuItem( MenuManager.MENU_MENUBAR, "rcm.view.heading" );
-			menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
-
-			root_menu = menu_item;
+			mdi_menus.add( menu_item );
 
 			menu_item.addListener( 
 					new MenuItemListener() 
@@ -1160,7 +1168,8 @@ RelatedContentUISWT
 
 
 			menu_item = menu_manager.addMenuItem( parent_id, "rcm.menu.findsubs" );
-			menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+			mdi_menus.add( menu_item );
+			
 			menu_item.addListener(
 					new MenuItemListener() 
 					{
@@ -1174,7 +1183,8 @@ RelatedContentUISWT
 					});
 
 			menu_item = menu_manager.addMenuItem( parent_id, "rcm.menu.findbyhash" );
-			menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+			mdi_menus.add( menu_item );
+			
 			menu_item.addListener(
 					new MenuItemListener() 
 					{
@@ -1273,7 +1283,8 @@ RelatedContentUISWT
 					});
 			
 			menu_item = menu_manager.addMenuItem( parent_id, "rcm.menu.findbysize" );
-			menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+			mdi_menus.add( menu_item );
+			
 			menu_item.addListener(
 					new MenuItemListener() 
 					{
@@ -1348,7 +1359,8 @@ RelatedContentUISWT
 					});
 			
 			menu_item = menu_manager.addMenuItem( parent_id, "rcm.menu.findbyexpr" );
-			menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+			mdi_menus.add( menu_item );
+			
 			menu_item.addListener(
 					new MenuItemListener() 
 					{
@@ -1362,7 +1374,8 @@ RelatedContentUISWT
 					});
 			
 			menu_item = menu_manager.addMenuItem( parent_id, "rcm.menu.findbypop" );
-			menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+			mdi_menus.add( menu_item );
+			
 			menu_item.addListener(
 					new MenuItemListener() 
 					{
@@ -1376,11 +1389,13 @@ RelatedContentUISWT
 					});
 			
 			menu_item = menu_manager.addMenuItem( parent_id, "sep1" );
-			menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+			mdi_menus.add( menu_item );
+			
 			menu_item.setStyle( MenuItem.STYLE_SEPARATOR );
 		
 			menu_item = menu_manager.addMenuItem( parent_id, "v3.activity.button.readall" );
-			menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+			mdi_menus.add( menu_item );
+			
 			menu_item.addListener(
 					new MenuItemListener() 
 					{
@@ -1394,7 +1409,8 @@ RelatedContentUISWT
 					});
 			
 			menu_item = menu_manager.addMenuItem( parent_id, "Subscription.menu.deleteall");
-			menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+			mdi_menus.add( menu_item );
+			
 			menu_item.addListener(
 					new MenuItemListener() 
 					{
@@ -1408,7 +1424,8 @@ RelatedContentUISWT
 					});
 			
 			menu_item = menu_manager.addMenuItem( parent_id, "Subscription.menu.reset" );
-			menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+			mdi_menus.add( menu_item );
+			
 			menu_item.addListener( 
 					new MenuItemListener() 
 					{
@@ -1430,11 +1447,13 @@ RelatedContentUISWT
 			
 			
 			menu_item = menu_manager.addMenuItem( parent_id, "sep2" );
-			menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+			mdi_menus.add( menu_item );
+			
 			menu_item.setStyle( MenuItem.STYLE_SEPARATOR );
 			
 			menu_item = menu_manager.addMenuItem( parent_id, "MainWindow.menu.view.configuration" );
-			menu_item.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+			mdi_menus.add( menu_item );
+			
 			menu_item.addListener( 
 					new MenuItemListener() 
 					{
@@ -1453,6 +1472,13 @@ RelatedContentUISWT
 					      	 }
 						}
 					});
+			
+		}finally{
+			
+			for ( MenuItem mi: mdi_menus ){
+				
+				mi.setDisposeWithUIDetach(UIInstance.UIT_SWT);
+			}
 		}
 	}
 
