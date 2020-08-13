@@ -63,6 +63,12 @@ RCMPlugin
 
 	public static final String POPULARITY_SEARCH_EXPR	= "(.)";
 
+	
+	public static final String	OPT_NAME	 		= "Name";					// String
+	public static final String	OPT_NO_FOCUS 		= "No Focus";				// Boolean
+	public static final String	OPT_SUBSCRIPTION	= "Subscription";			// Boolean
+	public static final String	OPT_MAX_AGE_SECS	= "Max Age Secs";			// Long
+	
 	private static final boolean	SEARCH_ENABLE_DEFAULT	= true;
 	
 	static{
@@ -246,7 +252,7 @@ RCMPlugin
 			
 			pc.setPluginParameter( "plugin.info", plugin_info );
 		
-			COConfigurationManager.save();
+			COConfigurationManager.setDirty();
 		}
 	}
 	
@@ -656,7 +662,14 @@ RCMPlugin
 	
 			Map<String,Object> options = new HashMap<>();
 			
-			options.put( "No Focus", true );
+			options.put( OPT_NO_FOCUS, true );
+			
+			Long max_age_secs = (Long)search_parameters.get( "a" );	// SearchProvider.SP_MAX_AGE_SECS );
+			
+			if ( max_age_secs != null ){
+				
+				options.put( RCMPlugin.OPT_MAX_AGE_SECS, max_age_secs );
+			}
 			
 			try{
 				lookupByExpression( term, new String[]{ target_net }, options );
@@ -702,7 +715,7 @@ RCMPlugin
 			throw( new IPCException( "UI not bound" ));
 		}
 			
-		Boolean	_no_focus = (Boolean)options.get( "No Focus" );
+		Boolean	_no_focus = (Boolean)options.get( RCMPlugin.OPT_NO_FOCUS );
 		
 		boolean no_focus = _no_focus != null && _no_focus;
 		
@@ -715,7 +728,7 @@ RCMPlugin
 				{
 					if ( isRCMEnabled()){
 
-						Boolean b_is_subscription = (Boolean)options.get( "Subscription" );
+						Boolean b_is_subscription = (Boolean)options.get( OPT_SUBSCRIPTION );
 						
 						boolean is_subscription = b_is_subscription != null && b_is_subscription;
 	
@@ -723,7 +736,7 @@ RCMPlugin
 							
 							Map<String,Object>	properties = new HashMap<String, Object>();
 								
-							String name = (String)options.get( "Name" );
+							String name = (String)options.get( OPT_NAME );
 							
 							if ( name == null ){
 								
@@ -733,6 +746,13 @@ RCMPlugin
 							properties.put( SearchProvider.SP_SEARCH_NAME, name );
 							properties.put( SearchProvider.SP_SEARCH_TERM, expression );
 							properties.put( SearchProvider.SP_NETWORKS, networks );
+							
+							Long max_age_secs = (Long)options.get( OPT_MAX_AGE_SECS );
+							
+							if ( max_age_secs != null ){
+								
+								properties.put( "a", max_age_secs );	// SearchProvider.SP_MAX_AGE_SECS
+							}
 							
 							properties.put( "_frequency_", 10 );
 							
@@ -753,7 +773,7 @@ RCMPlugin
 								
 								current_ui.setUIEnabled( true );
 							
-								current_ui.addSearch( expression, networks, no_focus );
+								current_ui.addSearch( expression, networks, options );
 							}
 						}
 					}
@@ -856,6 +876,7 @@ RCMPlugin
 			byte[]			hash 	= null;
 			List<String>	nets 	= new ArrayList<>();
 			List<String>	exprs 	= new ArrayList<>();
+			long			max_age	= -1;
 			
 			for ( String bit: bits ){
 				
@@ -872,6 +893,8 @@ RCMPlugin
 					size = Long.parseLong( rhs );
 				}else if ( lhs.equals( "hash" )){
 					hash = Base32.decode( rhs );
+				}else if ( lhs.equals( "max_age" )){
+					max_age = Long.parseLong( rhs );
 				}
 			}
 			
@@ -894,7 +917,14 @@ RCMPlugin
 				
 					// meh, just pick first atm 
 				
-				lookupByExpression( exprs.get(0), networks );
+				Map<String,Object>	options = new HashMap<>();
+				
+				if ( max_age > 0 ){
+					
+					options.put( RCMPlugin.OPT_MAX_AGE_SECS, max_age );
+				}
+				
+				lookupByExpression( exprs.get(0), networks, options );
 			}
 			
 			return( new ByteArrayInputStream( VuzeFileHandler.getSingleton().create().exportToBytes() ));

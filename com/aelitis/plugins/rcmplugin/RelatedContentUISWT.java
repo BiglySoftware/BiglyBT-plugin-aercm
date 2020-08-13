@@ -766,7 +766,7 @@ RelatedContentUISWT
 					String[] networks = AENetworkClassifier.getDefaultNetworks();
 	
 					for (Tag tag : tags) {
-						addSearch("tag:" + tag.getTagName(true), networks, false);
+						addSearch("tag:" + tag.getTagName(true), networks, new HashMap<>());
 					}
 				}
 			});
@@ -1384,7 +1384,42 @@ RelatedContentUISWT
 						selected(
 							MenuItem menu, Object target ) 
 						{
-							addSearch( RCMPlugin.POPULARITY_SEARCH_EXPR, new String[]{ AENetworkClassifier.AT_PUBLIC }, false );
+							addSearch( RCMPlugin.POPULARITY_SEARCH_EXPR, new String[]{ AENetworkClassifier.AT_PUBLIC }, new HashMap<>() );
+						}
+					});
+			
+			MenuItem recent_menu= menu_manager.addMenuItem( parent_id, "rcm.findrecent" );
+			mdi_menus.add( recent_menu );
+			
+			recent_menu.setStyle( MenuItem.STYLE_MENU );
+			
+			recent_menu.addFillListener(
+					new MenuItemFillListener()
+					{
+						@Override
+						public void
+						menuWillBeShown(
+		                       MenuItem menu, Object data)
+						{
+							menu.removeAllChildItems();
+
+							MenuItem week = menu_manager.addMenuItem( recent_menu, "rcm.recent.week" );
+
+							week.addListener(
+								new MenuItemListener() 
+								{
+									@Override
+									public void
+									selected(
+										MenuItem menu, Object target ) 
+									{
+										Map<String,Object> options = new HashMap<>();
+										
+										options.put( RCMPlugin.OPT_MAX_AGE_SECS, 7*24*60*60L );
+										
+										addSearch( RCMPlugin.POPULARITY_SEARCH_EXPR, new String[]{ AENetworkClassifier.AT_PUBLIC }, options );
+									}
+								});
 						}
 					});
 			
@@ -1547,7 +1582,7 @@ RelatedContentUISWT
 						value += (value.isEmpty()?"":" ") + bit;
 					}
 
-					addSearch( value, networks, false );
+					addSearch( value, networks, new HashMap<>());
 				}
 			}
 		}); 	
@@ -1887,15 +1922,32 @@ RelatedContentUISWT
 	@Override
 	public void
 	addSearch(
-		String 			original_expression,
-		String[]		networks,
-		boolean			no_focus )
+		String 					original_expression,
+		String[]				networks,
+		Map<String,Object>		options )
 	{
+		Boolean	_no_focus = (Boolean)options.get( RCMPlugin.OPT_NO_FOCUS );
+		
+		boolean no_focus = _no_focus != null && _no_focus;
+
+		Long	_max_age_secs = (Long)options.get( RCMPlugin.OPT_MAX_AGE_SECS );
+		
+		long max_age_secs = _max_age_secs==null?-1:_max_age_secs;
+		
 		last_search_expr	= original_expression;
 		
 		final boolean	is_popularity = original_expression.equals( RCMPlugin.POPULARITY_SEARCH_EXPR );
+				
+		String name;
 		
-		final String name = is_popularity?MessageText.getString("rcm.pop" ):("'" + original_expression + "'" );
+		if ( is_popularity ){
+			
+			name = MessageText.getString( max_age_secs>0?"rcm.recent":"rcm.pop" );
+			
+		}else{
+			
+			name = "'" + original_expression + "'";
+		}
 		
 		try{
 			synchronized( this ){
@@ -1908,7 +1960,7 @@ RelatedContentUISWT
 				
 				if (  existing_si == null ){
 		
-					final RCMItemContent new_si = new RCMItemContent( plugin, original_dummy_hash, networks, new String[] { original_expression });
+					final RCMItemContent new_si = new RCMItemContent( plugin, original_dummy_hash, networks, new String[] { original_expression }, max_age_secs );
 					
 					if ( is_popularity ){
 						
@@ -1992,7 +2044,7 @@ RelatedContentUISWT
 												MenuItem			menu,
 												Object 				target )
 											{
-												addSearch( getLatestExpression(), networks, false );
+												addSearch( getLatestExpression(), networks, new HashMap<>());
 											}
 										});
 											
@@ -2693,8 +2745,12 @@ RelatedContentUISWT
 			}
 			
 			String[] expressions =  map.containsKey( "expressions")?((List<String>)map.get( "expressions" )).toArray( new String[0] ):null;
+						
+			Number l_mas = (Number)map.get( "max_age" );
 			
-			RCMItemContent result =  new RCMItemContent( plugin, hash, networks, expressions );
+			long max_age_secs = l_mas==null?-1:l_mas.longValue();
+
+			RCMItemContent result =  new RCMItemContent( plugin, hash, networks, expressions, max_age_secs );
 			
 			result.search();
 		
@@ -2723,6 +2779,9 @@ RelatedContentUISWT
 		private byte[]				hash;
 		private long				file_size;
 		private String[]			expressions;
+		
+		private long				max_age_secs = -1;
+		
 		private int					min_version = -1;
 		private boolean				popularity	= false;
 		
@@ -2780,12 +2839,14 @@ RelatedContentUISWT
 			RCMPlugin	_plugin,	
 			byte[]		_hash,
 			String[]	_networks,
-			String[]	_expressions )
+			String[]	_expressions,
+			long		_max_age_secs )
 		{
-			plugin		= _plugin;
-			hash		= _hash;
-			networks	= _networks;
-			expressions	= _expressions;
+			plugin			= _plugin;
+			hash			= _hash;
+			networks		= _networks;
+			expressions		= _expressions;
+			max_age_secs	= _max_age_secs;
 		}
 		
 		protected RCMPlugin
@@ -2854,6 +2915,12 @@ RelatedContentUISWT
 			return( networks );
 		}
 		
+		protected long
+		getMaxAgeSecs()
+		{
+			return( max_age_secs );
+		}
+		
 		public ExportedDataSource
 		exportDataSource()
 		{
@@ -2883,6 +2950,11 @@ RelatedContentUISWT
 						if ( expressions != null ) {
 							
 							map.put( "expressions", Arrays.asList( expressions ));
+						}
+						
+						if ( max_age_secs > 0 ){
+							
+							map.put( "max_age", max_age_secs );
 						}
 						
 						return( map );
@@ -2917,6 +2989,11 @@ RelatedContentUISWT
 			}else{
 				
 				arg += (arg.isEmpty()?"":"&") + "hash=" + Base32.encode( hash );
+			}
+			
+			if ( max_age_secs > 0 ){
+				
+				arg += (arg.isEmpty()?"":"&") + "max_age=" +max_age_secs;
 			}
 			
 			uri += UrlUtils.encode( arg );
@@ -3096,6 +3173,11 @@ RelatedContentUISWT
 	  						parameters.put( SearchProvider.SP_NETWORKS, networks );
 	  					}
   					
+	  					if ( max_age_secs > 0 ){
+	  						
+	  						parameters.put( "a", max_age_secs );	// SearchProvider.SP_MAX_AGE_SECS)
+	  					}
+	  					
 	  					manager.searchRCM(
 	  						parameters, 
 	  						new SearchObserver() {
@@ -3601,7 +3683,7 @@ RelatedContentUISWT
 			String[]	_networks,
 			String[]		s )
 		{
-			super( _plugin, _hash, _networks, s );
+			super( _plugin, _hash, _networks, s, -1 );
 		}
 		
 		protected void

@@ -23,6 +23,8 @@
 
 package com.aelitis.plugins.rcmplugin;
 
+import java.util.Map;
+
 import com.biglybt.pif.download.Download;
 
 import com.biglybt.ui.UserPrompterResultListener;
@@ -55,9 +57,9 @@ RelatedContentUI
 
 	public void
 	addSearch(
-		String			expression,
-		String[]		networks,
-		boolean			no_focus );
+		String					expression,
+		String[]				networks,
+		Map<String,Object>		options );
 	
 	public void
 	destroy();

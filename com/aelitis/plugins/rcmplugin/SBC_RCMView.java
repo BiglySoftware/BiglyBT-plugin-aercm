@@ -274,7 +274,18 @@ SBC_RCMView
 
 									boolean	is_popularity = expression.equals( RCMPlugin.POPULARITY_SEARCH_EXPR );
 									
-									String name = is_popularity?MessageText.getString("rcm.pop" ):("'" + expression + "'" );
+									long max_age_secs = ic.getMaxAgeSecs();
+
+									String name;
+									
+									if ( is_popularity ){
+										
+										name = MessageText.getString( max_age_secs>0?"rcm.recent":"rcm.pop" );
+										
+									}else{
+										
+										name = "'" + expression + "'";
+									}
 									
 									String	subscription_name = MessageText.getString( "rcm.search.provider" ) + ": " + name + net_str;
 
@@ -283,6 +294,11 @@ SBC_RCMView
 									properties.put( SearchProvider.SP_SEARCH_NAME, subscription_name );
 									properties.put( SearchProvider.SP_SEARCH_TERM, expression );
 									properties.put( SearchProvider.SP_NETWORKS, networks );
+									
+									if ( max_age_secs > 0 ){
+										
+										properties.put( "a", max_age_secs );	// SearchProvider.SP_MAX_AGE_SECS
+									}
 									
 									try{
 										RCMPlugin plugin = ic.getPlugin();
