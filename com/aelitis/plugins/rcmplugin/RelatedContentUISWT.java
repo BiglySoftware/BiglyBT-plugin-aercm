@@ -1227,7 +1227,7 @@ RelatedContentUISWT
 											}
 										}
 										
-										byte[] hash = UrlUtils.decodeSHA1Hash( value.trim());
+										byte[] hash = UrlUtils.decodeTruncatedHash( value.trim());
 										
 										if ( hash == null ){
 											
@@ -1236,21 +1236,7 @@ RelatedContentUISWT
 												
 												if ( url != null && url.startsWith( "magnet" )){
 													
-													int	pos = url.indexOf( "btih:" );
-													
-													if ( pos > 0 ){
-														
-														url = url.substring( pos+5 );
-														
-														pos = url.indexOf( '&' );
-														
-														if ( pos != -1 ){
-															
-															url = url.substring( 0, pos );
-														}
-														
-														hash = UrlUtils.decodeSHA1Hash( url );
-													}
+													hash = UrlUtils.getTruncatedHashFromMagnetURI( url );
 												}
 											}catch( Throwable e ){
 												
