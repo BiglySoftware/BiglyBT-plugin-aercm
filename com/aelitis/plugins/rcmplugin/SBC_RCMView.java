@@ -35,6 +35,7 @@ import com.biglybt.ui.selectedcontent.DownloadUrlInfo;
 import com.biglybt.ui.selectedcontent.ISelectedContent;
 import com.biglybt.ui.selectedcontent.SelectedContent;
 import com.biglybt.ui.selectedcontent.SelectedContentManager;
+import com.biglybt.ui.swt.components.BubbleTextBox;
 import com.biglybt.ui.swt.skin.*;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
@@ -119,7 +120,7 @@ SBC_RCMView
 	private boolean				space_reserved;
 	
 	
-	private Text txtFilter;
+	private BubbleTextBox txtFilter;
 
 	private RelatedContentManagerListener current_rcm_listener;
 
@@ -208,7 +209,7 @@ SBC_RCMView
 
 		SWTSkinObjectTextbox soFilterBox = (SWTSkinObjectTextbox) getSkinObject("filterbox");
 		if (soFilterBox != null) {
-			txtFilter = soFilterBox.getTextControl();
+			txtFilter = soFilterBox.getBubbleTextBox();
 		}
 
 		final SWTSkinObject soFilterArea = getSkinObject("filterarea");
@@ -951,7 +952,7 @@ SBC_RCMView
 				SWT.MULTI | SWT.FULL_SELECTION | SWT.VIRTUAL );
 		
 		if (txtFilter != null) {
-			tv_related_content.enableFilterCheck(txtFilter, this);
+			tv_related_content.enableFilterCheck(txtFilter, this, false);
 		}
 		
 		tv_related_content.setRowDefaultHeight(16);
