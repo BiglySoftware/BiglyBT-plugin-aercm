@@ -955,16 +955,8 @@ SBC_RCMView
 			tv_related_content.enableFilterCheck(txtFilter, this, false);
 		}
 		
-		tv_related_content.setRowDefaultHeight(16);
-		
-		SWTSkinObject soSizeSlider = getSkinObject("table-size-slider");
-		if (soSizeSlider instanceof SWTSkinObjectContainer) {
-			SWTSkinObjectContainer so = (SWTSkinObjectContainer) soSizeSlider;
-			if (!tv_related_content.enableSizeSlider(so.getComposite(), 16, 100)) {
-				so.setVisible(false);
-			}
-		}
-		
+		tv_related_content.setRowDefaultHeightEM(1);
+
 		tcManager.setDefaultColumnNames(TABLE_RCM, new String[] {
 					ColumnRC_New.COLUMN_ID,
 					ColumnRC_Rank.COLUMN_ID,
