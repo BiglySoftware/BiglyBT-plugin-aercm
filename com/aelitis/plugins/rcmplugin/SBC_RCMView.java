@@ -1764,8 +1764,14 @@ SBC_RCMView
 
 		try {
 			String name = ds.getTitle();
-			String s = regex ? filter : "\\Q" + filter.replaceAll("[|;]", "\\\\E|\\\\Q") + "\\E";
-  		Pattern pattern = Pattern.compile(s, Pattern.CASE_INSENSITIVE);
+			if (!regex) {
+				String[] filters = filter.split("[|;]");
+				for (int i = 0; i < filters.length; i++) {
+					filters[i] = Pattern.quote(filters[i]);
+				}
+				filter = String.join("|", filters);
+			}
+  		Pattern pattern = Pattern.compile(filter, Pattern.CASE_INSENSITIVE);
   
   		return pattern.matcher(name).find();
 		} catch (Exception e) {
