@@ -746,7 +746,8 @@ RelatedContentUISWT
 						Tag[] tags = (Tag[]) target;
 	
 						for (Tag tag : tags) {
-							if (tag.getTagType().getTagType() == TagType.TT_DOWNLOAD_MANUAL) {
+							int tt = tag.getTagType().getTagType();
+							if (tt == TagType.TT_DOWNLOAD_MANUAL || tt == TagType.TT_SWARM_TAG ){
 								enable = true;
 								break;
 							}
@@ -765,8 +766,12 @@ RelatedContentUISWT
 	
 					String[] networks = AENetworkClassifier.getDefaultNetworks();
 	
+					if ( networks.length == AENetworkClassifier.AT_NETWORKS.length ){
+						networks = null;
+					}
+					
 					for (Tag tag : tags) {
-						addSearch("tag:" + tag.getTagName(true), networks, new HashMap<>());
+						addSearch("tag:" + tag.getTagName(true).replace(' ', '+' ), networks, new HashMap<>());
 					}
 				}
 			});
