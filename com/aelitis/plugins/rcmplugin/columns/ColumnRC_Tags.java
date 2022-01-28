@@ -19,11 +19,21 @@ package com.aelitis.plugins.rcmplugin.columns;
 
 
 import com.biglybt.pif.ui.tables.TableCell;
-import com.biglybt.pif.ui.tables.TableCellRefreshListener;
-import com.biglybt.pif.ui.tables.TableColumn;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import com.biglybt.core.content.RelatedContent;
-import com.biglybt.ui.common.table.TableColumnCore;
+import com.biglybt.core.tag.Tag;
+import com.biglybt.core.tag.TagManager;
+import com.biglybt.core.tag.TagManagerFactory;
+import com.biglybt.core.tag.TagType;
+import com.biglybt.core.tag.TagUtils;
+import com.biglybt.core.util.Debug;
+import com.biglybt.ui.swt.views.tableitems.TagsColumn;
 
 
 /**
@@ -33,43 +43,63 @@ import com.biglybt.ui.common.table.TableColumnCore;
  */
 public class 
 ColumnRC_Tags
-	implements TableCellRefreshListener
+	extends TagsColumn
 {	
 	public static String COLUMN_ID = "rc_tags";
 	
+	private static final TagManager tag_manager = TagManagerFactory.getTagManager();
+
+	private static final TagType	tag_type =  tag_manager.getTagType( TagType.TT_SWARM_TAG );
+
 	public 
 	ColumnRC_Tags(
-		TableColumn column )
+		Class ds, String tableID, String columnID ) 
 	{
-		column.initialize(TableColumn.ALIGN_CENTER, TableColumn.POSITION_LAST, 60 );
-		column.addListeners(this);
-		column.setRefreshInterval(TableColumn.INTERVAL_GRAPHIC);
-		column.setType(TableColumn.TYPE_TEXT_ONLY);
-
-		if ( column instanceof TableColumnCore ){
-			((TableColumnCore)column).setUseCoreDataSource( true );
-		}
+		super( ds, tableID, columnID );
 	}
-
+	
 	@Override
-	public void refresh(TableCell cell) {
-		RelatedContent rc = (RelatedContent) cell.getDataSource();
-		if (rc == null) {
-			return;
-		}
-
-		String[] tags = rc.getTags();
-
-		String tags_str = "";
+	public List<Tag> 
+	getTags(
+		TableCell cell )
+	{
+		RelatedContent rc = (RelatedContent)cell.getDataSource();
 		
-		if ( tags != null && tags.length > 0 ){
-			
-			for ( int i=0;i< tags.length;i++){
+		if ( rc != null ){
+
+			String[] tag_names = rc.getTags();
+
+			if ( tag_names != null && tag_names.length > 0 ){
 				
-				tags_str += (i==0?"":",") + tags[i];
+				Set<Tag>	tags = new HashSet<>(tag_names.length);
+				
+				for ( String tag_name: tag_names ){
+					
+					if ( TagUtils.isInternalTagName(tag_name)){
+						
+						continue;
+					}
+					
+					try{
+						Tag tag = tag_type.getTag( tag_name, true );
+						
+						if ( tag == null ){
+							
+							tag = tag_type.createTag(tag_name, true );
+						}
+						
+						tags.add( tag );
+						
+					}catch( Throwable e ){
+						
+						Debug.out( e );
+					}
+				}
+				
+				return( new ArrayList<>( tags ));
 			}
 		}
-	
-		cell.setText( tags_str );
+		
+		return( Collections.emptyList());
 	}
 }

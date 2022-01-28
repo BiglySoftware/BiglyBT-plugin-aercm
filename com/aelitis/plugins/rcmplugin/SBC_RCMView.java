@@ -723,12 +723,20 @@ SBC_RCMView
 		tableManager.registerColumn(
 				RelatedContent.class, 
 				ColumnRC_Tags.COLUMN_ID,
-					new TableColumnCreationListener() {
-						@Override
-						public void tableColumnCreated(TableColumn column) {
-							new ColumnRC_Tags(column);
-						}
-					});
+				new TableColumnCoreCreationListener() 
+				{
+					@Override
+					public TableColumnCore 
+					createTableColumnCore(
+						Class<?> forDataSourceType, String tableID, String columnID )
+					{
+						return( new ColumnRC_Tags(forDataSourceType, tableID, columnID ));
+					}
+				
+					@Override
+					public void tableColumnCreated(TableColumn column) {				
+					}
+				});
 		tableManager.registerColumn(
 				RelatedContent.class, 
 				ColumnRC_Networks.COLUMN_ID,
