@@ -47,7 +47,8 @@ RelatedContentUI
 	public void
 	addSearch(
 		long			size,
-		String[]		networks );
+		String[]		networks,
+		String			name );
 	
 	public void
 	addSearch(

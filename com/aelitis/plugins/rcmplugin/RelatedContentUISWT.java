@@ -869,7 +869,7 @@ RelatedContentUISWT
 
 								if ( len >= RelatedContentManager.FILE_ASSOC_MIN_SIZE ){
 
-									explicitSearch( len, networks );
+									explicitSearch( len, networks, dl.getName());
 								}
 							}
 						}
@@ -950,7 +950,7 @@ RelatedContentUISWT
 										networks = new String[]{ AENetworkClassifier.AT_PUBLIC };
 									}
 
-									explicitSearch( file.getLength(), networks );
+									explicitSearch( file.getLength(), networks, file.getFile(true).getName());
 								}
 							}
 						}
@@ -975,9 +975,10 @@ RelatedContentUISWT
 	protected void
 	explicitSearch(
 		long			file_size,
-		String[]		networks )
+		String[]		networks,
+		String			name )
 	{
-		addSearch( file_size, networks );
+		addSearch( file_size, networks, name );
 	}
 	
 	protected void
@@ -1323,7 +1324,7 @@ RelatedContentUISWT
 										
 											if ( file_size >= RelatedContentManager.FILE_ASSOC_MIN_SIZE ){
 												
-												addSearch( file_size, networks );
+												addSearch( file_size, networks, null );
 											
 												ok = true;
 											}
@@ -1738,10 +1739,14 @@ RelatedContentUISWT
 	@Override
 	public void
 	addSearch(
-		final long 			file_size,
-		final String[]		networks )
+		long 			file_size,
+		String[]		networks,
+		String			comment )
 	{
-		final String name = MessageText.getString( "rcm.label.filesize" ) + ": " + file_size;
+		final String name = 
+			MessageText.getString( "rcm.label.filesize" ) + 
+			": " + file_size +
+			( comment==null?"":" (" + comment + ")");
 		
 		try{
 			synchronized( this ){
@@ -1754,7 +1759,7 @@ RelatedContentUISWT
 				
 				if (  existing_si == null ){
 		
-					final RCMItemContent new_si = new RCMItemContent( plugin, dummy_hash, networks, file_size );
+					final RCMItemContent new_si = new RCMItemContent( plugin, dummy_hash, networks, file_size, comment );
 					
 					rcm_item_map.put( dummy_hash, new_si );
 					
@@ -1823,7 +1828,7 @@ RelatedContentUISWT
 													MenuItem			menu,
 													Object 				target )
 												{
-													addSearch( file_size, new String[]{ AENetworkClassifier.AT_PUBLIC });
+													addSearch( file_size, new String[]{ AENetworkClassifier.AT_PUBLIC }, comment );
 												}
 											});
 										
@@ -1870,7 +1875,7 @@ RelatedContentUISWT
 												MenuItem			menu,
 												Object 				target )
 											{
-												addSearch( file_size, networks );
+												addSearch( file_size, networks, comment );
 											}
 										});
 									
@@ -2403,7 +2408,7 @@ RelatedContentUISWT
 		getTitleInfoProperty(
 			int propertyID ) 
 		{		
-			if ( propertyID == TITLE_TEXT ){
+			if ( propertyID == TITLE_TEXT || propertyID == TITLE_INDICATOR_TEXT_TOOLTIP ){
 				
 				return( getTitle());
 				
@@ -2767,6 +2772,7 @@ RelatedContentUISWT
 		implements RCMItem, DataSourceResolver.ExportableDataSource
 	{	
 		private final RCMPlugin		plugin;
+		private String				name;
 		private byte[]				hash;
 		private long				file_size;
 		private String[]			expressions;
@@ -2817,12 +2823,14 @@ RelatedContentUISWT
 			RCMPlugin	_plugin,	
 			byte[]		_hash,
 			String[]	_networks,
-			long		_file_size )
+			long		_file_size,
+			String		_name )
 		{
 			plugin		= _plugin;
 			hash		= _hash;
 			networks	= _networks;
 			file_size	= _file_size;
+			name		= _name;
 		}
 		
 		protected
@@ -2844,6 +2852,12 @@ RelatedContentUISWT
 		getPlugin()
 		{
 			return( plugin );
+		}
+		
+		public String
+		getName()
+		{
+			return( name );
 		}
 		
 		private void
@@ -2872,6 +2886,12 @@ RelatedContentUISWT
 		getHash()
 		{
 			return( hash );
+		}
+		
+		public long
+		getFileSize()
+		{
+			return( file_size );
 		}
 		
 		private void
@@ -3662,9 +3682,10 @@ RelatedContentUISWT
 			RCMPlugin	_plugin,
 			byte[]		_hash,
 			String[]	_networks,
-			long		_file_size )
+			long		_file_size,
+			String		_comment )
 		{
-			super( _plugin, _hash, _networks, _file_size );
+			super( _plugin, _hash, _networks, _file_size, _comment );
 		}
 		
 		protected

@@ -404,7 +404,7 @@ public class RCM_SubViewHolder
 	
 				long file_size = dl_file.getLength();
 											
-				new_subview = new RCMItemSubView( plugin, torrent.getHash(), networks, file_size );
+				new_subview = new RCMItemSubView( plugin, torrent.getHash(), networks, file_size, dl_file.getFile(true).getName());
 			}
 											
 		}else if (search_strings != null){

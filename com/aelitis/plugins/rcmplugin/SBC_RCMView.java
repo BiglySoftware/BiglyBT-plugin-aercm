@@ -243,12 +243,14 @@ SBC_RCMView
 					
 					String[] exprs = ic.getExpressions();
 					
+					long	size = ic.getFileSize();
+					
 					final SearchProvider sp = ic.getPlugin().getSearchProvider();
 
-					if ( sp != null && exprs != null && exprs.length == 1 ){
-						
-						String original_expr = exprs[0];
-						
+					String original_expr =  exprs != null && exprs.length == 1?exprs[0]:null;
+					
+					if ( sp != null && ( original_expr != null || size > 0 )){
+												
 						visible = true;
 						
 						soRSSButton.addSelectionListener(
@@ -261,39 +263,59 @@ SBC_RCMView
 									
 									return( (expressions==null||expressions.length==0)?original_expr:expressions[0]);
 								}
-
-								
+							
 								@Override
-								public void pressed(SWTSkinButtonUtility buttonUtility, SWTSkinObject skinObject,
-										int stateMask){
-									
-									String expression = getLatestExpression();
+								public void 
+								pressed(
+									SWTSkinButtonUtility 	buttonUtility, 
+									SWTSkinObject 			skinObject,
+									int 					stateMask){
 									
 									String[] networks = ic.getNetworks();
 									
 									String net_str = RCMPlugin.getNetworkString( networks );
 
-									boolean	is_popularity = expression.equals( RCMPlugin.POPULARITY_SEARCH_EXPR );
-									
 									long max_age_secs = ic.getMaxAgeSecs();
-
-									String name;
+								
+									String 	name;
 									
-									if ( is_popularity ){
+									Map<String,Object>	properties = new HashMap<String, Object>();
+
+									if ( original_expr != null ){
 										
-										name = MessageText.getString( max_age_secs>0?"rcm.recent":"rcm.pop" );
+										String expression = getLatestExpression();
 										
+										boolean	is_popularity = expression.equals( RCMPlugin.POPULARITY_SEARCH_EXPR );
+																					
+										if ( is_popularity ){
+											
+											name = MessageText.getString( max_age_secs>0?"rcm.recent":"rcm.pop" );
+											
+										}else{
+											
+											name = "'" + expression + "'";
+										}
+										
+										properties.put( SearchProvider.SP_SEARCH_TERM, expression );
+
 									}else{
 										
-										name = "'" + expression + "'";
+										properties.put( SearchProvider.SP_SEARCH_TERM, "{file-size=" + size + "}" );
+										
+										name = MessageText.getString( "rcm.label.filesize" ) + ": " + size;
+										
+										String ic_name = ic.getName();
+										
+										if ( ic_name != null ){
+											
+											name += " (" + ic_name + ")";
+										}
+										
 									}
-									
-									String	subscription_name = MessageText.getString( "rcm.search.provider" ) + ": " + name + net_str;
 
-									Map<String,Object>	properties = new HashMap<String, Object>();
-									
+									String	subscription_name = MessageText.getString( "rcm.search.provider" ) + ": " + name + net_str;
+								
 									properties.put( SearchProvider.SP_SEARCH_NAME, subscription_name );
-									properties.put( SearchProvider.SP_SEARCH_TERM, expression );
 									properties.put( SearchProvider.SP_NETWORKS, networks );
 									
 									if ( max_age_secs > 0 ){

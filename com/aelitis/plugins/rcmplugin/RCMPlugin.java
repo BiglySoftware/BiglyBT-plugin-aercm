@@ -575,17 +575,18 @@ RCMPlugin
 	
 	public void
 	lookupBySize(
-		final long	size )
+		long	size )
 	
 		throws IPCException
 	{
-		lookupBySize( size, new String[]{ AENetworkClassifier.AT_PUBLIC });
+		lookupBySize( size, new String[]{ AENetworkClassifier.AT_PUBLIC }, null );
 	}
-	
+		
 	public void
 	lookupBySize(
-		final long		size,
-		final String[]	networks )
+		long			size,
+		String[]		networks,
+		String			name )
 	
 		throws IPCException
 	{
@@ -614,7 +615,7 @@ RCMPlugin
 							
 								current_ui.setUIEnabled( true );
 								
-								current_ui.addSearch( size, networks );
+								current_ui.addSearch( size, networks, name );
 							}
 						}
 					}
@@ -623,7 +624,7 @@ RCMPlugin
 			
 			current_ui.setUIEnabled( true );
 			
-			current_ui.addSearch( size, networks );
+			current_ui.addSearch( size, networks, name );
 		}
 	}
 	
@@ -877,6 +878,7 @@ RCMPlugin
 			List<String>	nets 	= new ArrayList<>();
 			List<String>	exprs 	= new ArrayList<>();
 			long			max_age	= -1;
+			String			name	= null;
 			
 			for ( String bit: bits ){
 				
@@ -895,6 +897,8 @@ RCMPlugin
 					hash = Base32.decode( rhs );
 				}else if ( lhs.equals( "max_age" )){
 					max_age = Long.parseLong( rhs );
+				}else if ( lhs.equals( "name" )){
+					name = rhs;
 				}
 			}
 			
@@ -907,11 +911,16 @@ RCMPlugin
 			
 			if ( hash != null ){
 				
-				lookupByHash( hash, networks, MessageText.getString( "RCM.column.rc_hash" ) + ": " + ByteFormatter.encodeString( hash ));
+				if ( name == null ){
+					
+					name = MessageText.getString( "RCM.column.rc_hash" ) + ": " + ByteFormatter.encodeString( hash );
+				}
+				
+				lookupByHash( hash, networks, name );
 				
 			}else if ( size != -1 ){
 				
-				lookupBySize(	size, networks );
+				lookupBySize( size, networks, name );
 				
 			}else if ( !exprs.isEmpty()){
 				
