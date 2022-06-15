@@ -23,7 +23,7 @@ package com.aelitis.plugins.rcmplugin.columns;
 
 import com.biglybt.core.content.RelatedContent;
 import com.biglybt.ui.common.table.TableColumnCore;
-
+import com.biglybt.ui.swt.views.table.utils.TableColumnSWTUtils;
 import com.biglybt.core.util.DisplayFormatters;
 import com.biglybt.pif.ui.tables.*;
 
@@ -64,6 +64,8 @@ public class ColumnRC_Size
 		if ( size > 0 && cell.setSortValue( size )){
 		
 			cell.setText( DisplayFormatters.formatByteCountToKiBEtc( size ));
+			
+			TableColumnSWTUtils.setSizeAlpha( cell, size );
 		}
 	}
 }
