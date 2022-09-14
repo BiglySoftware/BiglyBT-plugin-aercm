@@ -38,6 +38,7 @@ import com.biglybt.core.config.COConfigurationManager;
 import com.biglybt.core.content.*;
 import com.biglybt.core.internat.MessageText;
 import com.biglybt.core.subs.*;
+import com.biglybt.core.subs.util.SearchSubsResultBase;
 import com.biglybt.core.tag.Tag;
 import com.biglybt.core.tag.TagType;
 import com.biglybt.core.util.*;
@@ -776,6 +777,46 @@ RelatedContentUISWT
 				}
 			});
 	
+			MenuItem mi_searchsubs = mm.addMenuItem(MenuManager.MENU_SUBSCRIPTION_RESULT_CONTEXT, "rcm.contextmenu.lookupassoc");
+			torrent_menus.add( mi_searchsubs );
+	
+			mi_searchsubs.setGraphic(menu_icon);
+			mi_searchsubs.addFillListener(new MenuItemFillListener() {
+				@Override
+				public void menuWillBeShown(MenuItem menu, Object target) {
+					boolean enable = false;
+					if (target instanceof SearchSubsResultBase[]) {
+						SearchSubsResultBase[] results = (SearchSubsResultBase[]) target;
+	
+						for (SearchSubsResultBase result : results) {
+							if ( result.getHash() != null ){
+								
+								enable = true;
+								break;
+							}
+						}
+					}
+					menu.setVisible(true);
+					menu.setEnabled(enable);
+				}
+			});
+			mi_searchsubs.addMultiListener(new MenuItemListener() {
+				@Override
+				public void selected(MenuItem menu, Object target) {
+					if (target instanceof SearchSubsResultBase[]) {
+						SearchSubsResultBase[] results = (SearchSubsResultBase[]) target;
+	
+						for (SearchSubsResultBase result : results) {
+							
+							byte[] hash = result.getHash();
+							
+							String[] networks = AENetworkClassifier.getDefaultNetworks();
+														
+							addSearch(hash, networks, result.getName());
+						}
+					}
+				}
+			});		
 	
 			MenuItem mi_rel = mm.addMenuItem(MenuManager.MENU_DOWNLOAD_CONTEXT, "rcm.contextmenu.lookupassoc");
 			torrent_menus.add( mi_rel );
