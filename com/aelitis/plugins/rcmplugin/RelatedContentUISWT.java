@@ -520,7 +520,18 @@ RelatedContentUISWT
 			enable_search.addEnabledOnSelection( sr_min_rank );
 			
 			config_model.createGroup( "rcm.search.group", enable_search, sr_min_rank );
+					
+				// use bigly dht
+				
+			final BooleanParameter use_bigly_dht = 
+				config_model.addBooleanParameter2( 
+					"rcm.config.use.bigly.dht", "rcm.config.use.bigly.dht",
+					manager.getUseBiglyDHTForPublicLookups());
 			
+			use_bigly_dht.setMinimumRequiredUserMode( Parameter.MODE_INTERMEDIATE );
+
+			use_bigly_dht.addListener((param)->manager.setUseBiglyDHTForPublicLookups(use_bigly_dht.getValue()));
+
 				// overall enable
 			
 			final BooleanParameter overall_disable = 

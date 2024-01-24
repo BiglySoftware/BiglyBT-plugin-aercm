@@ -23,6 +23,8 @@ package com.aelitis.plugins.rcmplugin.columns;
 import com.biglybt.core.content.RelatedContent;
 import com.biglybt.ui.common.table.TableColumnCore;
 
+import java.math.BigInteger;
+
 import org.eclipse.swt.SWT;
 import com.biglybt.core.internat.MessageText;
 import com.biglybt.core.util.ByteFormatter;
@@ -76,12 +78,11 @@ public class ColumnRC_Hash
 
 		byte[] hash = rc.getHash();
 		
-		if ( hash == null ){
-			
-			return;
-		}
+		BigInteger sort = hash==null?new BigInteger(-1,new byte[0]):new BigInteger(1,hash);
 
-		cell.setText(ByteFormatter.encodeString(hash));
+		cell.setSortValue( sort );
+		
+		cell.setText( hash==null?"":ByteFormatter.encodeString(hash));
 	}
 	
 	public void cellMouseTrigger(final TableCellMouseEvent event) {
