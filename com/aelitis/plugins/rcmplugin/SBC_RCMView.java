@@ -63,13 +63,14 @@ import com.biglybt.ui.swt.mainwindow.TorrentOpener;
 import com.biglybt.ui.swt.views.table.TableViewSWT;
 import com.biglybt.ui.swt.views.table.TableViewSWTMenuFillListener;
 import com.biglybt.ui.swt.views.table.impl.TableViewFactory;
-
+import com.biglybt.ui.swt.views.table.utils.TableColumnFilterHelper;
 import com.biglybt.core.CoreFactory;
 import com.biglybt.core.content.ContentException;
 import com.biglybt.core.content.RelatedContent;
 import com.biglybt.core.content.RelatedContentLookupListener;
 import com.biglybt.core.content.RelatedContentManager;
 import com.biglybt.core.content.RelatedContentManagerListener;
+import com.biglybt.core.history.DownloadHistory;
 import com.biglybt.ui.UIFunctions;
 import com.biglybt.ui.UIFunctionsManager;
 import com.biglybt.ui.common.ToolBarItem;
@@ -110,6 +111,8 @@ SBC_RCMView
 			Debug.out(e);
 		}
 	}
+	
+	private TableColumnFilterHelper<RelatedContent>	col_filter_helper;
 	
 	private TableViewSWT<RelatedContent> 	tv_related_content;
 
@@ -981,7 +984,18 @@ SBC_RCMView
 				ColumnRC_Rank.COLUMN_ID, 
 				SWT.MULTI | SWT.FULL_SELECTION | SWT.VIRTUAL );
 		
-		if (txtFilter != null) {
+		if ( txtFilter != null ){
+			
+			col_filter_helper = new TableColumnFilterHelper<RelatedContent>( tv_related_content, "rcmview:search" );
+
+			String tooltip = MessageText.getString("filter.tt.start");
+			tooltip += MessageText.getString("dlh.filter.tt.line1");
+			tooltip += MessageText.getString("dlh.filter.tt.line3");
+			tooltip += MessageText.getString("column.filter.tt.line1");
+			tooltip += MessageText.getString("column.filter.tt.line2");
+			
+			txtFilter.setTooltip( tooltip );
+			
 			tv_related_content.enableFilterCheck(txtFilter, this, false);
 		}
 		
@@ -1780,10 +1794,16 @@ SBC_RCMView
 	}
 
 
-	// @see com.biglybt.ui.swt.views.table.TableViewFilterCheck#filterCheck(java.lang.Object, java.lang.String, boolean)
 	@Override
-	public boolean filterCheck(RelatedContent ds, String filter, boolean regex) {
-		if (!isOurContent(ds)) {
+	public boolean 
+	filterCheck(
+		RelatedContent 	ds, 
+		String 			filter, 
+		boolean 		regex,
+		boolean			confusable )
+	{
+		if (!isOurContent(ds)){
+			
 			return false;
 		}
 
@@ -1792,26 +1812,123 @@ SBC_RCMView
 			return( true );
 		}
 
-		try {
-			String name = ds.getTitle();
-			if (!regex) {
-				String[] filters = filter.split("[|;]");
-				for (int i = 0; i < filters.length; i++) {
-					filters[i] = Pattern.quote(filters[i]);
-				}
-				filter = String.join("|", filters);
-			}
-  		Pattern pattern = Pattern.compile(filter, Pattern.CASE_INSENSITIVE);
-  
-  		return pattern.matcher(name).find();
-		} catch (Exception e) {
-			return true;
+		if ( confusable ){
+			
+			filter = GeneralUtils.getConfusableEquivalent(filter,true);
 		}
+		
+		Object o_name;
+
+		if ( filter.startsWith( "h:" )){
+
+			filter = filter.substring( 2 );
+
+			List<String> names = new ArrayList<>();
+
+			byte[] hash = ds.getHash();
+
+			if ( hash != null ){
+				
+				names.add( ByteFormatter.encodeString( hash ));
+	
+				names.add( Base32.encode( hash ));
+			}
+			
+			o_name = names;
+
+		}else if ( filter.startsWith( "t:" ) || filter.startsWith( "tag:" )){
+
+			filter = filter.substring( filter.startsWith( "t:" )?2:4 );
+
+			String[] tags = ds.getTags();
+				
+			List<String> names = new ArrayList<>( Arrays.asList( tags ));
+				
+			o_name = names;
+
+		}else{
+
+			String default_text = ds.getTitle();
+
+			if ( confusable ){
+				
+				default_text = GeneralUtils.getConfusableEquivalent( default_text, false );
+			}
+			
+			boolean res = col_filter_helper.filterCheck( ds, filter, regex, default_text, false );
+			
+			return( res );
+		}
+
+			// could replace below with col_filter_helper and some hacks sometime...
+		
+		boolean	match_result = true;
+
+		String expr;
+		
+		if ( regex ){
+			
+			expr = filter;
+			
+			if ( expr.startsWith( "!" )){
+				
+				expr = expr.substring(1);
+
+				match_result = false;
+			}
+		}else{
+			
+			expr = RegExUtil.convertAndOrToExpr( filter );
+		}
+
+		Pattern pattern = RegExUtil.getCachedPattern( "rcmview:search", expr, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE );
+
+		boolean bOurs;
+
+		if ( o_name instanceof String ){
+
+			String name = (String)o_name;
+			
+			if ( confusable ){
+			
+				name = GeneralUtils.getConfusableEquivalent( name, false );
+			}
+			
+			bOurs = pattern.matcher( name ).find() == match_result;
+
+		}else{
+
+			List<String>	names = (List<String>)o_name;
+
+				// match_result: true -> at least one match; false -> any fail
+
+			bOurs = !match_result;
+
+			for ( String name: names ){
+
+				if ( confusable ){
+				
+					name = GeneralUtils.getConfusableEquivalent( name, false );
+				}
+				
+				if ( pattern.matcher( name ).find()){
+
+					bOurs = match_result;
+
+					break;
+				}
+			}
+		}
+
+		return( bOurs );
 	}
 	
-	// @see com.biglybt.ui.swt.views.table.TableViewFilterCheck#filterSet(java.lang.String)
 	@Override
-	public void filterSet(String filter) {
+	public void 
+	filterSet(
+		String filter) 
+	{
+		col_filter_helper.filterSet( filter );
 	}
 
 	// @see com.biglybt.pif.ui.toolbar.UIToolBarActivationListener#toolBarItemActivated(ToolBarItem, long, java.lang.Object)
