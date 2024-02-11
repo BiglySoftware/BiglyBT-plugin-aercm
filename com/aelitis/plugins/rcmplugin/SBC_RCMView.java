@@ -48,6 +48,7 @@ import org.eclipse.swt.widgets.*;
 import com.biglybt.core.config.COConfigurationManager;
 import com.biglybt.core.config.ParameterListener;
 import com.biglybt.core.internat.MessageText;
+import com.biglybt.core.tag.TagUtils;
 import com.biglybt.core.util.*;
 import com.biglybt.pif.ui.UIManager;
 import com.biglybt.pif.ui.UIPluginViewToolBarListener;
@@ -1842,8 +1843,16 @@ SBC_RCMView
 
 			String[] tags = ds.getTags();
 				
-			List<String> names = new ArrayList<>( Arrays.asList( tags ));
+			List<String> names = new ArrayList<>();
 				
+			for (String tag:tags ){
+				
+				if ( !TagUtils.isInternalTagName( tag)){
+					
+					names.add(tag);
+				}
+			}
+			
 			o_name = names;
 
 		}else{
@@ -1990,9 +1999,8 @@ SBC_RCMView
 				Field field = Program.class.getDeclaredField("command");
 				field.setAccessible(true);
 				String command = (String) field.get(program);
-				command = command.replaceAll("%[1lL]", Matcher.quoteReplacement(s));
-				command = command.replace(" --", "");
-				PluginInitializer.getDefaultInterface().getUtilities().createProcess(command + " -incognito");
+				command = command.replaceAll("%[1lL]", Matcher.quoteReplacement("--incognito "+s));
+				PluginInitializer.getDefaultInterface().getUtilities().createProcess( command );
 			} catch (Exception e1) {
 				e1.printStackTrace();
 				Utils.launch(s);
