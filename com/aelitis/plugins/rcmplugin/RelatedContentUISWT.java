@@ -1567,6 +1567,8 @@ RelatedContentUISWT
 		SimpleTextEntryWindow entryWindow = new SimpleTextEntryWindow(
 				"rcm.menu.findbyexpr.title", "rcm.menu.findbyexpr.msg" );
 		
+		entryWindow.setTextLimit( 200 );	// underlying packet limit is 255 bytes containing term (UTF-8) and other guff
+		
 		if ( last_search_expr != null && last_search_expr.trim().length() > 0 ){
 			
 			entryWindow.setPreenteredText( last_search_expr, false );
@@ -2110,7 +2112,9 @@ RelatedContentUISWT
 												{
 													SimpleTextEntryWindow entryWindow = new SimpleTextEntryWindow(
 															"rcm.menu.findbyexpr.title", "rcm.menu.findbyexpr.msg" );
-																						
+																
+													entryWindow.setTextLimit( 200 );	// underlying packet limit is 255 bytes containing term (UTF-8) and other guff
+
 													String old_value =  getLatestExpression();
 													
 													entryWindow.setPreenteredText( old_value, false );
