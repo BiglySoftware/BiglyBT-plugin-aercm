@@ -128,6 +128,17 @@ public class ColumnRC_Actions
 			}
 
 			sp.printString(GCStringPrinter.FLAG_FULLLINESONLY);
+			
+			Point p = sp.getCalculatedPreferredSize();
+			
+			int pref = p.x + 10;
+			
+			TableColumn tableColumn = cell.getTableColumn();
+			
+			if (tableColumn != null && tableColumn.getPreferredWidth() < pref) {
+				
+				tableColumn.setPreferredWidth(pref);
+			}
 		}
 	}
 

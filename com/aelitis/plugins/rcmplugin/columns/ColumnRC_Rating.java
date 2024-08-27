@@ -25,6 +25,7 @@ import com.biglybt.core.CoreFactory;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.GC;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Display;
 import com.biglybt.core.internat.MessageText;
@@ -171,6 +172,17 @@ ColumnRC_Rating
 			}
 
 			sp.printString(GCStringPrinter.FLAG_FULLLINESONLY);
+			
+			Point p = sp.getCalculatedPreferredSize();
+			
+			int pref = p.x + 10;
+			
+			TableColumn tableColumn = cell.getTableColumn();
+			
+			if (tableColumn != null && tableColumn.getPreferredWidth() < pref) {
+				
+				tableColumn.setPreferredWidth(pref);
+			}
 		}
 	}
 	
