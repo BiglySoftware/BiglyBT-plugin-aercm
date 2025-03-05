@@ -896,6 +896,8 @@ SBC_RCMView
 			}
 		}
 
+		col_filter_helper = null;
+		
 		Utils.disposeSWTObjects(new Object[] {
 			tab_folder,
 		});
