@@ -22,6 +22,7 @@
 
 package com.aelitis.plugins.rcmplugin;
 
+import java.io.File;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -77,6 +78,7 @@ import com.biglybt.ui.mdi.*;
 import com.biglybt.ui.swt.SimpleTextEntryWindow;
 import com.biglybt.ui.swt.Utils;
 import com.biglybt.ui.swt.mainwindow.ClipboardCopy;
+import com.biglybt.ui.swt.mainwindow.TorrentOpener;
 import com.biglybt.ui.swt.pif.*;
 import com.biglybt.ui.swt.shells.CoreWaiterSWT;
 import com.biglybt.ui.swt.shells.CoreWaiterSWT.TriggerInThread;
@@ -1526,6 +1528,77 @@ RelatedContentUISWT
 			
 			
 			menu_item = menu_manager.addMenuItem( parent_id, "sep2" );
+			mdi_menus.add( menu_item );
+			menu_item.setStyle( MenuItem.STYLE_SEPARATOR );
+			
+			menu_item = menu_manager.addMenuItem( parent_id, "Subscription.menu.import" );
+			mdi_menus.add( menu_item );
+			
+			menu_item.addListener( 
+					new MenuItemListener() 
+					{
+						@Override
+						public void
+						selected(
+							MenuItem menu, Object target ) 
+						{
+							final Shell shell = Utils.findAnyShell();
+
+							FileDialog dialog = new FileDialog( shell, SWT.SYSTEM_MODAL | SWT.OPEN );
+
+							dialog.setFilterPath( TorrentOpener.getFilterPathTorrent());
+
+							dialog.setText(MessageText.getString( "importTorrentWizard.importfile.title" ));
+
+							dialog.setFilterExtensions(new String[] { "*.json", Constants.FILE_WILDCARD });
+
+							dialog.setFilterNames(new String[] { "*.json", Constants.FILE_WILDCARD });
+							
+							String str = dialog.open();
+
+							if ( str != null ){
+							
+								manager.importFromFile( new File( str ));
+							}
+						}
+					});
+			
+			menu_item = menu_manager.addMenuItem( parent_id, "Subscription.menu.export" );
+			mdi_menus.add( menu_item );
+			
+			menu_item.addListener( 
+					new MenuItemListener() 
+					{
+						@Override
+						public void
+						selected(
+							MenuItem menu, Object target ) 
+						{
+							final Shell shell = Utils.findAnyShell();
+
+							FileDialog dialog = new FileDialog( shell, SWT.SYSTEM_MODAL | SWT.OPEN );
+
+							dialog.setFilterPath( TorrentOpener.getFilterPathTorrent());
+
+							dialog.setText(MessageText.getString( "exportTorrentWizard.exportfile.title" ));
+
+							dialog.setFilterExtensions(new String[]{ "*.json" });
+
+							String str = dialog.open();
+
+							if ( str != null ){
+
+								if ( !( str.toLowerCase( Locale.US ).endsWith( ".json" ))){
+
+									str += ".json";
+								}
+								
+								manager.exportToFile( new File( str ));
+							}
+						}
+					});
+			
+			menu_item = menu_manager.addMenuItem( parent_id, "sep3" );
 			mdi_menus.add( menu_item );
 			
 			menu_item.setStyle( MenuItem.STYLE_SEPARATOR );
