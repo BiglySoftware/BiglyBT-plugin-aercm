@@ -59,19 +59,21 @@ import com.biglybt.pif.ui.toolbar.UIToolBarItem;
 import com.biglybt.pif.utils.search.SearchProvider;
 import com.biglybt.pifimpl.local.PluginInitializer;
 import com.biglybt.ui.swt.Utils;
+import com.biglybt.ui.swt.columns.archivedls.ColumnArchiveDLDate;
 import com.biglybt.ui.swt.mainwindow.ClipboardCopy;
 import com.biglybt.ui.swt.mainwindow.TorrentOpener;
 import com.biglybt.ui.swt.views.table.TableViewSWT;
 import com.biglybt.ui.swt.views.table.TableViewSWTMenuFillListener;
 import com.biglybt.ui.swt.views.table.impl.TableViewFactory;
+import com.biglybt.ui.swt.views.table.utils.TableColumnCreator;
 import com.biglybt.ui.swt.views.table.utils.TableColumnFilterHelper;
+import com.biglybt.ui.swt.views.tableitems.ColumnDateSizer;
 import com.biglybt.core.CoreFactory;
 import com.biglybt.core.content.ContentException;
 import com.biglybt.core.content.RelatedContent;
 import com.biglybt.core.content.RelatedContentLookupListener;
 import com.biglybt.core.content.RelatedContentManager;
 import com.biglybt.core.content.RelatedContentManagerListener;
-import com.biglybt.core.history.DownloadHistory;
 import com.biglybt.ui.UIFunctions;
 import com.biglybt.ui.UIFunctionsManager;
 import com.biglybt.ui.common.ToolBarItem;
@@ -669,24 +671,23 @@ SBC_RCMView
 					});
 			
 		tableManager.registerColumn(
-				RelatedContent.class, 
-				ColumnRC_Size.COLUMN_ID,
-					new TableColumnCreationListener() {
-						@Override
-						public void tableColumnCreated(TableColumn column) {
-							new ColumnRC_Size(column);
-						}
-					});
-		
-		tableManager.registerColumn(
-				RelatedContent.class, 
+				RelatedContent.class,
 				ColumnRC_Created.COLUMN_ID,
-					new TableColumnCreationListener() {
-						@Override
-						public void tableColumnCreated(TableColumn column) {
-							new ColumnRC_Created(column);
-						}
-					});
+				new TableColumnCoreCreationListener() {
+					@Override
+					public TableColumnCore createTableColumnCore(
+							Class<?> forDataSourceType, String tableID, String columnID) {
+						return new ColumnDateSizer(RelatedContent.class, columnID,
+								TableColumnCreator.DATE_COLUMN_WIDTH, tableID) {
+						};
+					}
+
+					@Override
+					public void tableColumnCreated(TableColumn column) {
+						new ColumnRC_Created(column);
+					}
+				});
+		
 		tableManager.registerColumn(
 				RelatedContent.class, 
 				ColumnRC_ChangedLocallyAgo.COLUMN_ID,
@@ -717,24 +718,40 @@ SBC_RCMView
 					});
 
 		tableManager.registerColumn(
-				RelatedContent.class, 
+				RelatedContent.class,
 				ColumnRC_FirstSeen.COLUMN_ID,
-					new TableColumnCreationListener() {
-						@Override
-						public void tableColumnCreated(TableColumn column) {
-							new ColumnRC_FirstSeen(column);
-						}
-					});
+				new TableColumnCoreCreationListener() {
+					@Override
+					public TableColumnCore createTableColumnCore(
+							Class<?> forDataSourceType, String tableID, String columnID) {
+						return new ColumnDateSizer(RelatedContent.class, columnID,
+								TableColumnCreator.DATE_COLUMN_WIDTH, tableID) {
+						};
+					}
+
+					@Override
+					public void tableColumnCreated(TableColumn column) {
+						new ColumnRC_FirstSeen(column);
+					}
+				});
 		
 		tableManager.registerColumn(
-				RelatedContent.class, 
+				RelatedContent.class,
 				ColumnRC_LastSeen.COLUMN_ID,
-					new TableColumnCreationListener() {
-						@Override
-						public void tableColumnCreated(TableColumn column) {
-							new ColumnRC_LastSeen(column);
-						}
-					});
+				new TableColumnCoreCreationListener() {
+					@Override
+					public TableColumnCore createTableColumnCore(
+							Class<?> forDataSourceType, String tableID, String columnID) {
+						return new ColumnDateSizer(RelatedContent.class, columnID,
+								TableColumnCreator.DATE_COLUMN_WIDTH, tableID) {
+						};
+					}
+
+					@Override
+					public void tableColumnCreated(TableColumn column) {
+						new ColumnRC_LastSeen(column);
+					}
+				});
 
 		tableManager.registerColumn(
 				RelatedContent.class, 

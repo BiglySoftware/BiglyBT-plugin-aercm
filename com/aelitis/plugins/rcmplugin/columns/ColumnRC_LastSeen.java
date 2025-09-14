@@ -22,9 +22,8 @@
 package com.aelitis.plugins.rcmplugin.columns;
 
 import com.biglybt.core.content.RelatedContent;
-import com.biglybt.ui.common.table.TableColumnCore;
-
-import com.biglybt.core.util.DisplayFormatters;
+import com.biglybt.ui.swt.views.table.utils.TableColumnCreator;
+import com.biglybt.ui.swt.views.tableitems.ColumnDateSizer;
 import com.biglybt.pif.ui.tables.*;
 
 /**
@@ -33,23 +32,26 @@ import com.biglybt.pif.ui.tables.*;
  *
  */
 public class ColumnRC_LastSeen
-	implements TableCellRefreshListener
+	implements TableCellRefreshListener, TableColumnExtraInfoListener
 {
 	public static final String COLUMN_ID = "rc_lastseen";
 
-	/**
-	 * 
-	 * @param sTableID
-	 */
-	public ColumnRC_LastSeen(TableColumn column) {
-		column.initialize(TableColumn.ALIGN_TRAIL, TableColumn.POSITION_INVISIBLE, 90 );
+	
+	@Override
+	public void fillTableColumnInfo(TableColumnInfo info) {
+		info.addCategories(new String[] {
+				TableColumn.CAT_TIME,
+		});
+		info.setProficiency(TableColumnInfo.PROFICIENCY_BEGINNER);
+	}
+	
+	public 
+	ColumnRC_LastSeen(
+		TableColumn column)
+	{	
+		column.setWidth(TableColumnCreator.DATE_COLUMN_WIDTH);
+		column.setPosition( TableColumn.POSITION_INVISIBLE );
 		column.addListeners(this);
-		column.setRefreshInterval(TableColumn.INTERVAL_GRAPHIC);
-		column.setType(TableColumn.TYPE_TEXT_ONLY);
-		
-		if ( column instanceof TableColumnCore ){
-			((TableColumnCore)column).setUseCoreDataSource( true );
-		}
 	}
 
 	@Override
@@ -61,9 +63,11 @@ public class ColumnRC_LastSeen
 
 		long last_seen = rc.getLastSeenSecs();
 
-		if ( cell.setSortValue( last_seen )){
-		
-			cell.setText( DisplayFormatters.formatDateShort( last_seen*1000 ));
+		TableColumn tc = cell.getTableColumn();
+
+		if (tc instanceof ColumnDateSizer) {
+
+			((ColumnDateSizer) tc).refresh(cell,  last_seen*1000  );
 		}
 	}
 }

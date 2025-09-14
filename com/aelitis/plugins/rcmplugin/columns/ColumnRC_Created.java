@@ -18,13 +18,14 @@
 package com.aelitis.plugins.rcmplugin.columns;
 
 
-import com.biglybt.core.util.DisplayFormatters;
 import com.biglybt.pif.ui.tables.TableCell;
 import com.biglybt.pif.ui.tables.TableCellRefreshListener;
 import com.biglybt.pif.ui.tables.TableColumn;
-
+import com.biglybt.pif.ui.tables.TableColumnExtraInfoListener;
+import com.biglybt.pif.ui.tables.TableColumnInfo;
 import com.biglybt.core.content.RelatedContent;
-import com.biglybt.ui.common.table.TableColumnCore;
+import com.biglybt.ui.swt.views.table.utils.TableColumnCreator;
+import com.biglybt.ui.swt.views.tableitems.ColumnDateSizer;
 
 
 /**
@@ -34,22 +35,25 @@ import com.biglybt.ui.common.table.TableColumnCore;
  */
 public class 
 ColumnRC_Created
-	implements TableCellRefreshListener
+	implements TableCellRefreshListener, TableColumnExtraInfoListener
 {	
 	public static String COLUMN_ID = "rc_created";
+	
+	@Override
+	public void fillTableColumnInfo(TableColumnInfo info) {
+		info.addCategories(new String[] {
+				TableColumn.CAT_TIME,
+		});
+		info.setProficiency(TableColumnInfo.PROFICIENCY_BEGINNER);
+	}
 	
 	public 
 	ColumnRC_Created(
 		TableColumn column )
 	{
-		column.initialize(TableColumn.ALIGN_TRAIL, TableColumn.POSITION_LAST, 90 );
+		column.setWidth(TableColumnCreator.DATE_COLUMN_WIDTH);
+		column.setPosition( TableColumn.POSITION_LAST );
 		column.addListeners(this);
-		column.setRefreshInterval(TableColumn.INTERVAL_GRAPHIC);
-		column.setType(TableColumn.TYPE_TEXT_ONLY);
-
-		if ( column instanceof TableColumnCore ){
-			((TableColumnCore)column).setUseCoreDataSource( true );
-		}
 	}
 
 	@Override
@@ -61,9 +65,11 @@ ColumnRC_Created
 
 		long date = rc.getPublishDate();
 
-		if ( cell.setSortValue( date )){
+		TableColumn tc = cell.getTableColumn();
 
-			cell.setText( date <= 0?"--":DisplayFormatters.formatCustomDateOnly( date ));
+		if (tc instanceof ColumnDateSizer) {
+
+			((ColumnDateSizer) tc).refresh(cell,  date  );
 		}
 	}
 }
