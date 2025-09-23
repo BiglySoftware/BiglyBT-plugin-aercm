@@ -671,7 +671,17 @@ SBC_RCMView
 					});
 			
 		tableManager.registerColumn(
-				RelatedContent.class,
+				RelatedContent.class, 
+				ColumnRC_Size.COLUMN_ID,
+					new TableColumnCreationListener() {
+						@Override
+						public void tableColumnCreated(TableColumn column) {
+							new ColumnRC_Size(column);
+						}
+					});
+		
+		tableManager.registerColumn(
+				RelatedContent.class, 
 				ColumnRC_Created.COLUMN_ID,
 				new TableColumnCoreCreationListener() {
 					@Override
