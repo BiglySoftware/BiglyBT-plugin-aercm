@@ -523,6 +523,17 @@ RelatedContentUISWT
 			
 			config_model.createGroup( "rcm.search.group", enable_search, sr_min_rank );
 					
+				// use torrent names
+			
+			BooleanParameter use_torrent_names = 
+					config_model.addBooleanParameter2( 
+							"rcm.config.use.torrent.names", "rcm.config.use.torrent.names",
+							manager.getUseTorrentNames());
+		
+			use_torrent_names.setMinimumRequiredUserMode( Parameter.MODE_INTERMEDIATE );
+
+			use_torrent_names.addListener((param)->manager.setUseTorrentNames(use_torrent_names.getValue()));
+			
 				// use bigly dht
 				
 			final BooleanParameter use_bigly_dht = 
